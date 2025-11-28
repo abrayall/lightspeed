@@ -21,6 +21,11 @@ A lightweight, rapid development tool for small PHP websites.
 curl -sfL https://raw.githubusercontent.com/abrayall/lightspeed/refs/heads/main/install.sh | sh -
 ```
 
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/abrayall/lightspeed/refs/heads/main/install.ps1 | iex
+```
+
 ### From Source
 
 ```bash
