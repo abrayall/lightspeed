@@ -70,12 +70,14 @@ var publishCmd = &cobra.Command{
 
 		// Check if Dockerfile exists, create if not
 		dockerfilePath := filepath.Join(dir, "Dockerfile")
+		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
 			if err := createDockerfile(dockerfilePath, buildImage); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
+			createdDockerfile = true
 		}
 
 		// Build the image
@@ -90,13 +92,20 @@ var publishCmd = &cobra.Command{
 			".",
 		}
 
-		buildCmd := exec.Command("docker", buildArgs...)
-		buildCmd.Dir = dir
-		buildCmd.Stdout = os.Stdout
-		buildCmd.Stderr = os.Stderr
+		dockerBuildCmd := exec.Command("docker", buildArgs...)
+		dockerBuildCmd.Dir = dir
+		dockerBuildCmd.Stdout = os.Stdout
+		dockerBuildCmd.Stderr = os.Stderr
 
-		if err := buildCmd.Run(); err != nil {
-			ui.PrintError("Failed to build image: %v", err)
+		buildErr := dockerBuildCmd.Run()
+
+		// Clean up Dockerfile if we created it
+		if createdDockerfile {
+			os.Remove(dockerfilePath)
+		}
+
+		if buildErr != nil {
+			ui.PrintError("Failed to build image: %v", buildErr)
 			os.Exit(1)
 		}
 
