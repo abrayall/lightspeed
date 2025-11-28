@@ -17,6 +17,9 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
+	CompletionOptions: cobra.CompletionOptions{
+		DisableDefaultCmd: true,
+	},
 }
 
 func Execute() {
@@ -27,9 +30,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Long = ui.Divider() + "\n" + ui.Banner() + "\n" + ui.VersionLine(Version) + "\n\n" + ui.Divider() + "\n\n  A lightweight, rapid development tool for small PHP websites"
+	rootCmd.Long = ui.Divider() + "\n" + ui.Banner() + "\n" + ui.VersionLine(Version) + "\n\n" + ui.Divider() + "\n\nA lightweight, rapid development tool for small PHP websites"
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(completionCmd)
 }
 
 var versionCmd = &cobra.Command{

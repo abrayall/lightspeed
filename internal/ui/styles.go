@@ -2,33 +2,35 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
 // Color palette
 var (
-	Primary   = lipgloss.Color("#F59E0B") // Amber/Gold - represents speed/light
-	Secondary = lipgloss.Color("#3B82F6") // Blue
-	Success   = lipgloss.Color("#10B981") // Green
-	Warning   = lipgloss.Color("#F59E0B") // Amber
-	Error     = lipgloss.Color("#EF4444") // Red
-	Muted     = lipgloss.Color("#6B7280") // Gray
-	White     = lipgloss.Color("#FFFFFF") // White
+	Primary    = lipgloss.Color("#F59E0B") // Amber/Gold - represents speed/light
+	Secondary  = lipgloss.Color("#3B82F6") // Blue
+	Success    = lipgloss.Color("#10B981") // Green
+	Warning    = lipgloss.Color("#F59E0B") // Amber
+	Error      = lipgloss.Color("#EF4444") // Red
+	MutedColor = lipgloss.Color("#6B7280") // Gray
+	White      = lipgloss.Color("#FFFFFF") // White
 )
 
 // Styles
 var (
 	TitleStyle = lipgloss.NewStyle().
+			Bold(true).
 			Foreground(Primary).
-			Bold(true)
+			MarginBottom(1)
 
 	SuccessStyle = lipgloss.NewStyle().
-			Foreground(Success)
+			Foreground(Success).
+			Bold(true)
 
 	ErrorStyle = lipgloss.NewStyle().
-			Foreground(Error)
+			Foreground(Error).
+			Bold(true)
 
 	WarningStyle = lipgloss.NewStyle().
 			Foreground(Warning)
@@ -37,16 +39,16 @@ var (
 			Foreground(Secondary)
 
 	MutedStyle = lipgloss.NewStyle().
-			Foreground(Muted)
+			Foreground(MutedColor)
 
 	BoldStyle = lipgloss.NewStyle().
 			Bold(true)
 
 	KeyStyle = lipgloss.NewStyle().
-			Foreground(Muted)
+			Foreground(MutedColor)
 
 	ValueStyle = lipgloss.NewStyle().
-			Foreground(White)
+			Foreground(lipgloss.Color("#E5E7EB"))
 
 	HighlightStyle = lipgloss.NewStyle().
 			Foreground(Primary).
@@ -64,21 +66,28 @@ func Banner() string {
 
 // Divider returns a styled divider line
 func Divider() string {
-	return MutedStyle.Render(strings.Repeat("─", 50))
+	return MutedStyle.Render("──────────────────────────────────────────────")
 }
 
-// VersionLine returns a styled version string
+// VersionLine returns the formatted version string
 func VersionLine(version string) string {
-	return MutedStyle.Render("  version ") + HighlightStyle.Render(version)
+	return ValueStyle.Render(" v" + version)
+}
+
+// PrintVersion prints the version
+func PrintVersion(version string) {
+	fmt.Println(VersionLine(version))
 }
 
 // PrintHeader prints the full header with banner, dividers, and version
 func PrintHeader(version string) {
-	fmt.Println(Divider())
-	fmt.Println(Banner())
-	fmt.Println(VersionLine(version))
 	fmt.Println()
 	fmt.Println(Divider())
+	fmt.Println(Banner())
+	PrintVersion(version)
+	fmt.Println()
+	fmt.Println(Divider())
+	fmt.Println()
 }
 
 // Header returns a styled section header

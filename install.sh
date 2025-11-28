@@ -148,9 +148,5 @@ esac
 echo ""
 log "${GREEN}✓ Installed lightspeed to ${INSTALL_DIR}/lightspeed${NC}"
 echo ""
-
-# Install shell completion silently
-"$INSTALL_DIR/lightspeed" completion install 2>/dev/null || true
-
 echo "Run 'lightspeed --help' to get started"
 echo ""
