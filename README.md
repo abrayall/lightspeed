@@ -14,19 +14,19 @@ A lightweight, rapid development tool for small PHP websites.
 
 ## Installation
 
+### Quick Install
+
+**macOS/Linux:**
+```bash
+curl -sfL https://raw.githubusercontent.com/abrayall/lightspeed/refs/heads/main/install.sh | sh -
+```
+
 ### From Source
 
 ```bash
 git clone https://github.com/abrayall/lightspeed.git
 cd lightspeed
 ./install.sh
-```
-
-### Manual Build
-
-```bash
-./build.sh
-sudo cp build/lightspeed-*-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) /usr/local/bin/lightspeed
 ```
 
 ## Commands
