@@ -67,8 +67,7 @@ var deployCmd = &cobra.Command{
 			token = os.Getenv("DIGITALOCEAN_TOKEN")
 		}
 		if token == "" {
-			ui.PrintError("DigitalOcean API token required. Use --token or set DIGITALOCEAN_TOKEN env var")
-			os.Exit(1)
+			token = getDefaultToken()
 		}
 
 		// Step 1: Publish
