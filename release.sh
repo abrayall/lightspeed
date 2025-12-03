@@ -175,6 +175,15 @@ print(data.get('id', ''))
 done
 
 echo ""
+
+# Publish server image
+echo -e "${YELLOW}Publishing server image...${NC}"
+echo ""
+
+"$SCRIPT_DIR/framework/server/build.sh"
+REGISTRY_TOKEN="$GITHUB_TOKEN" "$SCRIPT_DIR/framework/server/publish.sh"
+
+echo ""
 echo "=============================================="
 echo -e "${GREEN}Release Complete!${NC}"
 echo "=============================================="

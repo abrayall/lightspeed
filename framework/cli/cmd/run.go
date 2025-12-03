@@ -19,6 +19,24 @@ var (
 	runImage string
 )
 
+// Default server image from GitHub Container Registry
+const defaultServerImage = "ghcr.io/abrayall/lightspeed-server"
+
+// getServerImage returns the appropriate server image based on CLI version
+func getServerImage() string {
+	if runImage != "" && runImage != "php:8.2-apache" {
+		return runImage // User specified a custom image
+	}
+
+	// If version is "dev" or contains timestamp/commit info, use latest
+	if Version == "dev" || strings.Contains(Version, "-") {
+		return defaultServerImage + ":latest"
+	}
+
+	// Otherwise use the matching version tag
+	return defaultServerImage + ":" + Version
+}
+
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start a PHP development server",
@@ -60,13 +78,14 @@ var startCmd = &cobra.Command{
 		fmt.Println()
 
 		// Run PHP container with Apache
+		serverImage := getServerImage()
 		dockerArgs := []string{
 			"run",
 			"-d",
 			"--name", containerName,
 			"-p", fmt.Sprintf("%d:80", port),
 			"-v", fmt.Sprintf("%s:/var/www/html", dir),
-			runImage,
+			serverImage,
 		}
 
 		dockerCmd := exec.Command("docker", dockerArgs...)
@@ -215,7 +234,7 @@ func isCommandAvailable(name string) bool {
 
 func init() {
 	startCmd.Flags().IntVarP(&runPort, "port", "p", 0, "Port to expose (default: auto-detect in 9000 range)")
-	startCmd.Flags().StringVarP(&runImage, "image", "i", "php:8.2-apache", "Docker image to use")
+	startCmd.Flags().StringVarP(&runImage, "image", "i", "", "Docker image to use (default: lightspeed-server)")
 
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(stopCmd)

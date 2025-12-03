@@ -18,6 +18,21 @@ var (
 	buildImage string
 )
 
+// getBaseImage returns the appropriate base image for building
+func getBaseImage() string {
+	if buildImage != "" && buildImage != "php:8.2-apache" {
+		return buildImage // User specified a custom image
+	}
+
+	// If version is "dev" or contains timestamp/commit info, use latest
+	if Version == "dev" || strings.Contains(Version, "-") {
+		return defaultServerImage + ":latest"
+	}
+
+	// Otherwise use the matching version tag
+	return defaultServerImage + ":" + Version
+}
+
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build a Docker container for the project",
@@ -75,7 +90,7 @@ var buildCmd = &cobra.Command{
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath, buildImage); err != nil {
+			if err := createDockerfile(dockerfilePath); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
@@ -118,7 +133,8 @@ var buildCmd = &cobra.Command{
 	},
 }
 
-func createDockerfile(path string, baseImage string) error {
+func createDockerfile(path string) error {
+	baseImage := getBaseImage()
 	content := fmt.Sprintf(`FROM %s
 
 # Copy project files
@@ -186,7 +202,7 @@ func printSiteInfo(siteName string, version string, domains []string) {
 
 func init() {
 	buildCmd.Flags().StringVarP(&buildTag, "tag", "t", "", "Tag for the image (default: git version or 'latest')")
-	buildCmd.Flags().StringVarP(&buildImage, "image", "i", "php:8.2-apache", "Base Docker image to use")
+	buildCmd.Flags().StringVarP(&buildImage, "image", "i", "", "Base Docker image to use (default: lightspeed-server)")
 
 	rootCmd.AddCommand(buildCmd)
 }

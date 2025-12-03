@@ -84,7 +84,7 @@ var publishCmd = &cobra.Command{
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath, buildImage); err != nil {
+			if err := createDockerfile(dockerfilePath); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
