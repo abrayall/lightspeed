@@ -127,9 +127,15 @@ echo ""
 LIBRARY_ZIP="lightspeed-library-${VERSION}.zip"
 echo -e "${BLUE}Creating ${LIBRARY_ZIP}...${NC}"
 
-cd "$SCRIPT_DIR/framework/library"
-zip -r "$BUILD_DIR/$LIBRARY_ZIP" . -x "*.DS_Store"
+# Create temp directory with lightspeed/ subfolder structure
+LIBRARY_TMP=$(mktemp -d)
+mkdir -p "$LIBRARY_TMP/lightspeed"
+cp -r "$SCRIPT_DIR/framework/library/"* "$LIBRARY_TMP/lightspeed/"
+
+cd "$LIBRARY_TMP"
+zip -r "$BUILD_DIR/$LIBRARY_ZIP" lightspeed -x "*.DS_Store"
 cd "$SCRIPT_DIR"
+rm -rf "$LIBRARY_TMP"
 
 echo -e "${GREEN}✓ Created: ${LIBRARY_ZIP}${NC}"
 echo ""
