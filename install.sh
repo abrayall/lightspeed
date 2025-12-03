@@ -6,8 +6,10 @@
 set -e
 
 # Colors
-GREEN='\033[0;32m'
+GREEN='\033[38;2;39;201;63m'
+YELLOW='\033[38;2;222;184;65m'
 BLUE='\033[38;2;59;130;246m'
+GRAY='\033[38;2;136;136;136m'
 WHITE='\033[1;37m'
 RED='\033[0;31m'
 NC='\033[0m'
@@ -53,7 +55,7 @@ is_in_repo() {
 build_local() {
     ./build.sh >&2
 
-    BINARY=$(ls build/lightspeed-*-${OS}-${ARCH} 2>/dev/null | head -1)
+    BINARY=$(ls build/lightspeed-cli-*-${OS}-${ARCH} 2>/dev/null | head -1)
     if [ -z "$BINARY" ]; then
         log_err "${RED}No binary found for ${OS}-${ARCH}${NC}"
         exit 1
@@ -86,7 +88,7 @@ download_release() {
 
     # Construct download URL
     VERSION="${LATEST#v}"
-    FILENAME="lightspeed-${VERSION}-${OS}-${ARCH}"
+    FILENAME="lightspeed-cli-${VERSION}-${OS}-${ARCH}"
     URL="https://github.com/${REPO}/releases/download/${LATEST}/${FILENAME}"
 
     # Create temp directory

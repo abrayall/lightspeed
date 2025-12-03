@@ -1,0 +1,39 @@
+# Build artifacts
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# Documentation (not needed in image)
+*.md
+LICENSE
+
+# Local development
+.env
+.env.*
+tmp/

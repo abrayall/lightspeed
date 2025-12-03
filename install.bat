@@ -35,7 +35,7 @@ call build.bat
 
 :: Find the built binary
 set "BINARY="
-for %%f in (build\lightspeed-*-windows-%ARCH%.exe) do set "BINARY=%%f"
+for %%f in (build\lightspeed-cli-*-windows-%ARCH%.exe) do set "BINARY=%%f"
 
 if not defined BINARY (
     echo [91mError: No binary found for windows-%ARCH%[0m
@@ -65,7 +65,7 @@ echo.
 
 :: Remove 'v' prefix for filename
 set "VERSION=%LATEST:~1%"
-set "FILENAME=lightspeed-%VERSION%-windows-%ARCH%.exe"
+set "FILENAME=lightspeed-cli-%VERSION%-windows-%ARCH%.exe"
 set "URL=https://github.com/%REPO%/releases/download/%LATEST%/%FILENAME%"
 set "BINARY=%TMP_DIR%\lightspeed.exe"
 

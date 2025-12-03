@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Lightspeed Build Script
-# Builds the lightspeed CLI tool for multiple platforms
+# Builds CLI and platform components for multiple platforms
 
 set -e  # Exit on error
 
@@ -11,8 +11,10 @@ echo "=============================================="
 echo ""
 
 # Colors for output
-GREEN='\033[0;32m'
+GREEN='\033[38;2;39;201;63m'
+YELLOW='\033[38;2;222;184;65m'
 BLUE='\033[38;2;59;130;246m'
+GRAY='\033[38;2;136;136;136m'
 NC='\033[0m' # No Color
 
 # Get script directory
@@ -59,37 +61,66 @@ if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
     TIMESTAMP=$(date +"%m%d%H%M")
     MAINTENANCE="${MAINTENANCE}-${TIMESTAMP}"
     VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}"
-    echo -e "${BLUE}Detected uncommitted changes, appending timestamp${NC}"
+    echo -e "${GRAY}Detected uncommitted changes, appending timestamp${NC}"
 fi
 
 echo -e "${GREEN}Building version: ${VERSION}${NC}"
 echo ""
 
-# Build for multiple platforms
+# Build platforms
 PLATFORMS=("darwin/amd64" "darwin/arm64" "linux/amd64" "linux/arm64" "windows/amd64")
+
+# Build CLI
+echo -e "${YELLOW}=== Building CLI ===${NC}"
+echo ""
 
 for PLATFORM in "${PLATFORMS[@]}"; do
     GOOS="${PLATFORM%/*}"
     GOARCH="${PLATFORM#*/}"
 
-    OUTPUT_NAME="lightspeed-${VERSION}-${GOOS}-${GOARCH}"
+    OUTPUT_NAME="lightspeed-cli-${VERSION}-${GOOS}-${GOARCH}"
     if [ "$GOOS" = "windows" ]; then
         OUTPUT_NAME="${OUTPUT_NAME}.exe"
     fi
 
-    echo -e "${BLUE}Building ${GOOS}/${GOARCH}...${NC}"
+    echo -e "${BLUE}Building CLI ${GOOS}/${GOARCH}...${NC}"
 
     GOOS=$GOOS GOARCH=$GOARCH go build \
-        -ldflags "-X lightspeed/cmd.Version=${VERSION}" \
+        -ldflags "-X lightspeed/framework/cli/cmd.Version=${VERSION}" \
         -o "$BUILD_DIR/$OUTPUT_NAME" \
-        .
+        ./framework/cli
 
     echo -e "${GREEN}✓ Created: ${OUTPUT_NAME}${NC}"
-    echo ""
 done
 
-# Summary
 echo ""
+
+# Build Operator
+echo -e "${YELLOW}=== Building Operator ===${NC}"
+echo ""
+
+for PLATFORM in "${PLATFORMS[@]}"; do
+    GOOS="${PLATFORM%/*}"
+    GOARCH="${PLATFORM#*/}"
+
+    OUTPUT_NAME="lightspeed-operator-${VERSION}-${GOOS}-${GOARCH}"
+    if [ "$GOOS" = "windows" ]; then
+        OUTPUT_NAME="${OUTPUT_NAME}.exe"
+    fi
+
+    echo -e "${BLUE}Building Operator ${GOOS}/${GOARCH}...${NC}"
+
+    GOOS=$GOOS GOARCH=$GOARCH go build \
+        -ldflags "-X main.Version=${VERSION}" \
+        -o "$BUILD_DIR/$OUTPUT_NAME" \
+        ./platform/operator
+
+    echo -e "${GREEN}✓ Created: ${OUTPUT_NAME}${NC}"
+done
+
+echo ""
+
+# Summary
 echo "=============================================="
 echo -e "${GREEN}Build Complete!${NC}"
 echo "=============================================="

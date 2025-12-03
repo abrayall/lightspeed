@@ -110,7 +110,7 @@ lightspeed deploy
 ```
 
 Options:
-- `-a, --app` - App name (default: project directory name)
+- `-n, --name` - Site name (default: project directory name)
 - `-r, --region` - DigitalOcean region (default: nyc)
 - `-k, --token` - DigitalOcean API token
 

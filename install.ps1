@@ -32,7 +32,7 @@ function Test-InRepo {
 function Build-Local {
     & .\build.bat
 
-    $Binary = Get-ChildItem "build\lightspeed-*-windows-$Arch.exe" | Select-Object -First 1
+    $Binary = Get-ChildItem "build\lightspeed-cli-*-windows-$Arch.exe" | Select-Object -First 1
     if (-not $Binary) {
         Write-Host "${Red}Error: No binary found for windows-$Arch${NC}"
         exit 1
@@ -57,7 +57,7 @@ function Download-Release {
 
     # Remove 'v' prefix for filename
     $Version = $Latest.TrimStart('v')
-    $Filename = "lightspeed-$Version-windows-$Arch.exe"
+    $Filename = "lightspeed-cli-$Version-windows-$Arch.exe"
     $Url = "https://github.com/$Repo/releases/download/$Latest/$Filename"
 
     # Create temp directory
