@@ -150,12 +150,13 @@ echo -e "${GREEN}✓ Built: ${VERSION_TAG}${NC}"
 echo ""
 
 # Login to registry
+TOKEN="${DIGITALOCEAN_TOKEN:-$TOKEN}"  # Support both names for backwards compatibility
 if [ -n "$TOKEN" ]; then
     echo -e "${BLUE}Logging in to registry...${NC}"
     echo "$TOKEN" | docker login "$REGISTRY" --username "$TOKEN" --password-stdin
     echo ""
 else
-    echo -e "${GRAY}No TOKEN env var set, assuming already logged in${NC}"
+    echo -e "${GRAY}No DIGITALOCEAN_TOKEN env var set, assuming already logged in${NC}"
 fi
 
 # Push to registry
@@ -173,7 +174,7 @@ echo ""
 APP_NAME="lightspeed-operator"
 
 if [ -z "$TOKEN" ]; then
-    echo -e "${GRAY}No TOKEN set, skipping app deployment${NC}"
+    echo -e "${GRAY}No DIGITALOCEAN_TOKEN set, skipping app deployment${NC}"
 else
     echo -e "${YELLOW}Checking DigitalOcean App Platform...${NC}"
 

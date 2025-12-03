@@ -73,5 +73,5 @@ jobs:
 
       - name: Deploy operator
         env:
-          TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
         run: ./deploy.sh
