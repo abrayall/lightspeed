@@ -19,18 +19,12 @@ var (
 )
 
 // getBaseImage returns the appropriate base image for building
-func getBaseImage() string {
-	if buildImage != "" && buildImage != "php:8.2-apache" {
-		return buildImage // User specified a custom image
+// Priority: --image flag > site.properties image > CLI version default
+func getBaseImage(siteImage string) string {
+	if buildImage != "" {
+		return resolveImage(buildImage)
 	}
-
-	// If version is "dev" or contains timestamp/commit info, use latest
-	if Version == "dev" || strings.Contains(Version, "-") {
-		return defaultServerImage + ":latest"
-	}
-
-	// Otherwise use the matching version tag
-	return defaultServerImage + ":" + Version
+	return resolveImage(siteImage)
 }
 
 var buildCmd = &cobra.Command{
@@ -85,12 +79,18 @@ var buildCmd = &cobra.Command{
 
 		printSiteInfo(siteName, tag, domains)
 
+		// Get site image for Dockerfile
+		siteImage := ""
+		if siteInfo != nil {
+			siteImage = siteInfo.Image
+		}
+
 		// Check if Dockerfile exists, create if not
 		dockerfilePath := filepath.Join(dir, "Dockerfile")
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath); err != nil {
+			if err := createDockerfile(dockerfilePath, siteImage); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
@@ -133,8 +133,8 @@ var buildCmd = &cobra.Command{
 	},
 }
 
-func createDockerfile(path string) error {
-	baseImage := getBaseImage()
+func createDockerfile(path string, siteImage string) error {
+	baseImage := getBaseImage(siteImage)
 	content := fmt.Sprintf(`FROM %s
 
 # Copy project files
@@ -154,6 +154,30 @@ EXPOSE 80
 type SiteInfo struct {
 	Name    string
 	Domains []string
+	Image   string
+}
+
+// resolveImage normalizes an image specification
+// - empty string -> default based on CLI version
+// - version only (e.g., "0.5.3" or "v0.5.3") -> ghcr.io/abrayall/lightspeed-server:version
+// - full image name (contains "/" or ":") -> used as-is
+func resolveImage(image string) string {
+	if image == "" {
+		// Default based on CLI version
+		if Version == "dev" || strings.Contains(Version, "-") {
+			return defaultServerImage + ":latest"
+		}
+		return defaultServerImage + ":" + Version
+	}
+
+	// If it contains "/" or ":", it's a full image reference - use as-is
+	if strings.Contains(image, "/") || strings.Contains(image, ":") {
+		return image
+	}
+
+	// Just a version like "0.5.3" or "v0.5.3" - prepend default image
+	image = strings.TrimPrefix(image, "v")
+	return defaultServerImage + ":" + image
 }
 
 // loadSiteInfo loads site information from site.properties
@@ -183,6 +207,9 @@ func loadSiteInfo(dir string) (*SiteInfo, error) {
 	}
 	domainsList := props.GetList("domains")
 	info.Domains = append(info.Domains, domainsList...)
+
+	// Get base image
+	info.Image = props.Get("image")
 
 	return info, nil
 }

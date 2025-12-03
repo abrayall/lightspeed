@@ -79,12 +79,18 @@ var publishCmd = &cobra.Command{
 		ui.PrintKeyValue("Platform", apiHost)
 		fmt.Println()
 
+		// Get site image for Dockerfile
+		siteImage := ""
+		if siteInfo != nil {
+			siteImage = siteInfo.Image
+		}
+
 		// Check if Dockerfile exists, create if not
 		dockerfilePath := filepath.Join(dir, "Dockerfile")
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath); err != nil {
+			if err := createDockerfile(dockerfilePath, siteImage); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}

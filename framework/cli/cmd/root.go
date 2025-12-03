@@ -71,6 +71,14 @@ func init() {
 			apiHost = defaultAPIHost
 		}
 
+		// Ensure PHP library is installed
+		ensureLibrary()
+
+		// Update .idea config if site.properties and .idea exist
+		if dir, err := os.Getwd(); err == nil {
+			updateIdeaConfig(dir)
+		}
+
 		if originalPreRun != nil {
 			originalPreRun(cmd, args)
 		}

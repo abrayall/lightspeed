@@ -91,21 +91,29 @@ CLI_BINARIES=(
     "lightspeed-cli-${VERSION#v}-linux-arm64"
     "lightspeed-cli-${VERSION#v}-windows-amd64.exe"
 )
+LIBRARY_ZIP="lightspeed-library-${VERSION#v}.zip"
 
-echo -e "${BLUE}Checking for binaries...${NC}"
-MISSING_BINARIES=0
+echo -e "${BLUE}Checking for build artifacts...${NC}"
+MISSING_ARTIFACTS=0
 for BINARY in "${CLI_BINARIES[@]}"; do
     if [ ! -f "$BUILD_DIR/$BINARY" ]; then
         echo -e "${RED}✗ Missing: $BINARY${NC}"
-        MISSING_BINARIES=1
+        MISSING_ARTIFACTS=1
     else
         echo -e "${GRAY}✓ Found: $BINARY${NC}"
     fi
 done
 
-if [ $MISSING_BINARIES -eq 1 ]; then
+if [ ! -f "$BUILD_DIR/$LIBRARY_ZIP" ]; then
+    echo -e "${RED}✗ Missing: $LIBRARY_ZIP${NC}"
+    MISSING_ARTIFACTS=1
+else
+    echo -e "${GRAY}✓ Found: $LIBRARY_ZIP${NC}"
+fi
+
+if [ $MISSING_ARTIFACTS -eq 1 ]; then
     echo ""
-    echo -e "${RED}Error: Missing binaries. Run ./build.sh first.${NC}"
+    echo -e "${RED}Error: Missing artifacts. Run ./build.sh first.${NC}"
     exit 1
 fi
 
@@ -173,6 +181,31 @@ print(data.get('id', ''))
         echo -e "${GREEN}✓ Uploaded $BINARY${NC}"
     fi
 done
+
+# Upload library zip
+echo -e "${BLUE}Uploading $LIBRARY_ZIP...${NC}"
+
+UPLOAD_URL="https://uploads.github.com/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets?name=$LIBRARY_ZIP"
+
+UPLOAD_RESPONSE=$(curl -s -X POST \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    -H "Content-Type: application/zip" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    --data-binary "@$BUILD_DIR/$LIBRARY_ZIP" \
+    "$UPLOAD_URL")
+
+ASSET_ID=$(echo "$UPLOAD_RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data.get('id', ''))
+" 2>/dev/null)
+
+if [ -z "$ASSET_ID" ]; then
+    echo -e "${RED}✗ Failed to upload $LIBRARY_ZIP${NC}"
+else
+    echo -e "${GREEN}✓ Uploaded $LIBRARY_ZIP${NC}"
+fi
 
 echo ""
 

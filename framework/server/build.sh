@@ -34,19 +34,34 @@ echo -e "${BLUE}Reading version from git tags...${NC}"
 GIT_DESCRIBE=$(git describe --tags --match "v*.*.*" 2>/dev/null || echo "v0.1.0")
 
 # Parse git describe output
+# Format: v0.1.0 or v0.1.0-5-g1a2b3c4 (if commits exist after tag)
 if [[ "$GIT_DESCRIBE" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-g([0-9a-f]+))?$ ]]; then
     MAJOR="${BASH_REMATCH[1]}"
     MINOR="${BASH_REMATCH[2]}"
     MAINTENANCE="${BASH_REMATCH[3]}"
     COMMIT_COUNT="${BASH_REMATCH[5]}"
 
+    # If there are commits after the tag, append commit count to maintenance
     if [[ -n "$COMMIT_COUNT" ]]; then
-        VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}-${COMMIT_COUNT}"
+        MAINTENANCE="${MAINTENANCE}-${COMMIT_COUNT}"
+        VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}"
     else
         VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}"
     fi
 else
+    # Fallback
+    MAJOR=0
+    MINOR=1
+    MAINTENANCE=0
     VERSION="0.1.0"
+fi
+
+# Check for uncommitted local changes
+if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+    TIMESTAMP=$(date +"%m%d%H%M")
+    MAINTENANCE="${MAINTENANCE}-${TIMESTAMP}"
+    VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}"
+    echo -e "${GRAY}Detected uncommitted changes, appending timestamp${NC}"
 fi
 
 echo -e "${GREEN}Building version: ${VERSION}${NC}"
@@ -56,7 +71,7 @@ echo ""
 echo -e "${YELLOW}=== Generating Dockerfile ===${NC}"
 echo ""
 
-cat > "$BUILD_DIR/Dockerfile" << 'EOF'
+cat > "$BUILD_DIR/Dockerfile" << EOF
 FROM php:8.2-fpm
 
 # Install nginx
@@ -70,15 +85,24 @@ RUN echo 'server {\n\
     index index.php index.html;\n\
 \n\
     location / {\n\
-        try_files $uri $uri/ $uri.php?$query_string;\n\
+        try_files \$uri \$uri/ \$uri.php?\$query_string;\n\
     }\n\
 \n\
-    location ~ \.php$ {\n\
+    location ~ \.php\$ {\n\
         fastcgi_pass 127.0.0.1:9000;\n\
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n\
         include fastcgi_params;\n\
     }\n\
 }' > /etc/nginx/sites-available/default
+
+# Create lightspeed directory and store version
+RUN mkdir -p /opt/lightspeed
+COPY library/ /opt/lightspeed/
+RUN echo 'version=${VERSION}' > /opt/lightspeed/version.properties && \
+    chmod -R 755 /opt/lightspeed
+
+# Add /opt to PHP include path
+RUN echo 'include_path = ".:/opt"' > /usr/local/etc/php/conf.d/lightspeed.ini
 
 # Start script to run both nginx and php-fpm
 RUN echo '#!/bin/bash\n\
@@ -91,6 +115,11 @@ CMD ["/start.sh"]
 EOF
 
 echo -e "${GREEN}✓ Created: build/Dockerfile${NC}"
+
+# Copy library files
+echo -e "${BLUE}Copying library files...${NC}"
+cp -r "$SCRIPT_DIR/../library" "$BUILD_DIR/library"
+echo -e "${GREEN}✓ Copied library files${NC}"
 echo ""
 
 # Build the image

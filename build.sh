@@ -120,6 +120,20 @@ done
 
 echo ""
 
+# Package library
+echo -e "${YELLOW}=== Packaging Library ===${NC}"
+echo ""
+
+LIBRARY_ZIP="lightspeed-library-${VERSION}.zip"
+echo -e "${BLUE}Creating ${LIBRARY_ZIP}...${NC}"
+
+cd "$SCRIPT_DIR/framework/library"
+zip -r "$BUILD_DIR/$LIBRARY_ZIP" . -x "*.DS_Store"
+cd "$SCRIPT_DIR"
+
+echo -e "${GREEN}✓ Created: ${LIBRARY_ZIP}${NC}"
+echo ""
+
 # Summary
 echo "=============================================="
 echo -e "${GREEN}Build Complete!${NC}"

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"lightspeed/core/lib/properties"
 	"lightspeed/core/lib/ui"
 )
 
@@ -22,19 +23,28 @@ var (
 // Default server image from GitHub Container Registry
 const defaultServerImage = "ghcr.io/abrayall/lightspeed-server"
 
-// getServerImage returns the appropriate server image based on CLI version
-func getServerImage() string {
-	if runImage != "" && runImage != "php:8.2-apache" {
-		return runImage // User specified a custom image
+// getServerImage returns the appropriate server image
+// Priority: --image flag > site.properties image > CLI version default
+func getServerImage(siteImage string) string {
+	if runImage != "" {
+		return resolveImage(runImage)
+	}
+	return resolveImage(siteImage)
+}
+
+// getSiteImage loads the image property from site.properties if it exists
+func getSiteImage(dir string) string {
+	propsPath := filepath.Join(dir, "site.properties")
+	if !properties.FileExists(propsPath) {
+		return ""
 	}
 
-	// If version is "dev" or contains timestamp/commit info, use latest
-	if Version == "dev" || strings.Contains(Version, "-") {
-		return defaultServerImage + ":latest"
+	props, err := properties.ParseProperties(propsPath)
+	if err != nil {
+		return ""
 	}
 
-	// Otherwise use the matching version tag
-	return defaultServerImage + ":" + Version
+	return props.Get("image")
 }
 
 var startCmd = &cobra.Command{
@@ -77,8 +87,11 @@ var startCmd = &cobra.Command{
 		ui.PrintInfo("Starting development server...")
 		fmt.Println()
 
-		// Run PHP container with Apache
-		serverImage := getServerImage()
+		// Get site image from site.properties
+		siteImage := getSiteImage(dir)
+
+		// Run PHP container with nginx
+		serverImage := getServerImage(siteImage)
 		dockerArgs := []string{
 			"run",
 			"-d",
