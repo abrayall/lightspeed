@@ -253,7 +253,7 @@ func loadLibraries(dir string) ([]string, error) {
 	return resolved, nil
 }
 
-// updateIdeaConfig updates .idea/php.xml with resolved library paths
+// updateIdeaConfig updates .idea/php.xml and run configurations with resolved library paths
 func updateIdeaConfig(dir string) error {
 	ideaDir := filepath.Join(dir, ".idea")
 	propsPath := filepath.Join(dir, "site.properties")
@@ -296,8 +296,64 @@ func updateIdeaConfig(dir string) error {
 	// Only write if content is different
 	existing, err := os.ReadFile(phpXmlPath)
 	if err == nil && string(existing) == content {
+		// php.xml unchanged, but still update run config
+		updateRunConfig(dir, libraries)
 		return nil
 	}
 
-	return os.WriteFile(phpXmlPath, []byte(content), 0644)
+	if err := os.WriteFile(phpXmlPath, []byte(content), 0644); err != nil {
+		return err
+	}
+
+	// Update run configuration
+	return updateRunConfig(dir, libraries)
+}
+
+// updateRunConfig creates/updates .idea/runConfigurations/{sitename}.xml
+func updateRunConfig(dir string, libraries []string) error {
+	runConfigDir := filepath.Join(dir, ".idea", "runConfigurations")
+
+	// Create runConfigurations directory if it doesn't exist
+	if err := os.MkdirAll(runConfigDir, 0755); err != nil {
+		return err
+	}
+
+	// Get site name from site.properties
+	siteName := filepath.Base(dir) // default to directory name
+	propsPath := filepath.Join(dir, "site.properties")
+	if props, err := properties.ParseProperties(propsPath); err == nil {
+		if name := props.Get("name"); name != "" {
+			siteName = name
+		}
+	}
+	siteName = sanitizeContainerName(siteName)
+
+	// Build include_path from libraries using $USER_HOME$ variable
+	includePath := "."
+	homeDir, _ := os.UserHomeDir()
+	for _, lib := range libraries {
+		// Convert absolute home path to $USER_HOME$ variable
+		if strings.HasPrefix(lib, homeDir) {
+			lib = "$USER_HOME$" + strings.TrimPrefix(lib, homeDir)
+		}
+		includePath += ":" + lib
+	}
+
+	content := fmt.Sprintf(`<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="%s" type="PhpBuiltInWebServerConfigurationType" factoryName="PHP Built-in Web Server" document_root="$PROJECT_DIR$" port="8888">
+    <CommandLine parameters="-d include_path=&quot;%s&quot;" />
+    <method v="2" />
+  </configuration>
+</component>
+`, siteName, includePath)
+
+	runConfigPath := filepath.Join(runConfigDir, siteName+".xml")
+
+	// Only write if content is different
+	existing, err := os.ReadFile(runConfigPath)
+	if err == nil && string(existing) == content {
+		return nil
+	}
+
+	return os.WriteFile(runConfigPath, []byte(content), 0644)
 }
