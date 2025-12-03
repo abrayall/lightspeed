@@ -260,6 +260,7 @@ func waitForRedeployment(operatorURL, name string) (string, error) {
 
 	lastStatus := ""
 	sawDeploying := false
+	firstActiveTime := time.Time{}
 	timeout := time.After(5 * time.Minute)
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
@@ -285,12 +286,23 @@ func waitForRedeployment(operatorURL, name string) (string, error) {
 			// SUPERSEDED means old deployment was replaced by new one
 			if status.Status == "DEPLOYING" || status.Status == "PENDING_DEPLOY" || status.Status == "BUILDING" || status.Status == "PENDING_BUILD" || status.Status == "SUPERSEDED" {
 				sawDeploying = true
+				firstActiveTime = time.Time{} // Reset active timer
 			}
 
-			// Only return ACTIVE if we've seen a deploying state first
-			// (meaning a new deployment actually started)
+			// If ACTIVE and we saw deploying, deployment is complete
 			if status.Status == "ACTIVE" && sawDeploying {
 				return getDigitalOceanURL(status.URLs), nil
+			}
+
+			// If ACTIVE but no deploying state seen yet, track how long it's been ACTIVE
+			// After 30 seconds of ACTIVE without seeing deploying, assume no deployment needed
+			if status.Status == "ACTIVE" && !sawDeploying {
+				if firstActiveTime.IsZero() {
+					firstActiveTime = time.Now()
+				} else if time.Since(firstActiveTime) > 30*time.Second {
+					ui.PrintInfo("No new deployment detected (already up to date)")
+					return getDigitalOceanURL(status.URLs), nil
+				}
 			}
 
 			// Handle failures

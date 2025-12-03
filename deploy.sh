@@ -65,6 +65,40 @@ echo -e "${BLUE}Registry:${NC} ${REGISTRY}/${REPO}"
 echo -e "${BLUE}Image:${NC}    ${IMAGE}"
 echo ""
 
+# Deploy lightspeed website first (before operator deployment)
+WWW_DIR="$SCRIPT_DIR/platform/www"
+if [ -d "$WWW_DIR" ]; then
+    echo -e "${YELLOW}Deploying lightspeed website...${NC}"
+
+    # Determine which CLI binary to use based on platform
+    PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+        ARCH="arm64"
+    fi
+
+    CLI_BINARY="$SCRIPT_DIR/build/lightspeed-cli-${VERSION}-${PLATFORM}-${ARCH}"
+
+    # Fallback to finding any CLI binary if version-specific doesn't exist
+    if [ ! -f "$CLI_BINARY" ]; then
+        CLI_BINARY=$(find "$SCRIPT_DIR/build" -name "lightspeed-cli-*-${PLATFORM}-${ARCH}" | head -1)
+    fi
+
+    if [ -f "$CLI_BINARY" ]; then
+        echo -e "${GRAY}Using CLI: $(basename $CLI_BINARY)${NC}"
+        cd "$WWW_DIR"
+        "$CLI_BINARY" deploy --name lightspeed
+        cd "$SCRIPT_DIR"
+        echo ""
+    else
+        echo -e "${YELLOW}⚠ CLI binary not found, skipping website deployment${NC}"
+        echo -e "${GRAY}  Expected: lightspeed-cli-${VERSION}-${PLATFORM}-${ARCH}${NC}"
+        echo ""
+    fi
+fi
+
 # Generate Dockerfile
 echo -e "${BLUE}Generating Dockerfile...${NC}"
 cat > "$WORK_DIR/Dockerfile" << 'DOCKERFILE'
