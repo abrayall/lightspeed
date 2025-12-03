@@ -17,21 +17,24 @@ const digitalOceanAPI = "https://api.digitalocean.com/v2"
 type SitesHandler struct {
 	defaultToken    string
 	defaultRegistry string
+	cfClient        *CloudflareClient
 }
 
 // NewSitesHandler creates a new sites handler
-func NewSitesHandler(defaultToken, defaultRegistry string) *SitesHandler {
+func NewSitesHandler(defaultToken, defaultRegistry, cfToken string) *SitesHandler {
 	return &SitesHandler{
 		defaultToken:    defaultToken,
 		defaultRegistry: defaultRegistry,
+		cfClient:        NewCloudflareClient(cfToken),
 	}
 }
 
 // Site represents a site/app configuration (public API)
 type Site struct {
-	Name  string `json:"name"`
-	Image string `json:"image,omitempty"`
-	Tag   string `json:"tag,omitempty"`
+	Name    string   `json:"name"`
+	Image   string   `json:"image,omitempty"`
+	Tag     string   `json:"tag,omitempty"`
+	Domains []string `json:"domains,omitempty"`
 }
 
 // Internal defaults (not exposed via API)
@@ -176,6 +179,21 @@ func (h *SitesHandler) createSite(w http.ResponseWriter, r *http.Request, token 
 		return
 	}
 
+	// Build domains list - start with default lightspeed.ee domain as PRIMARY
+	domains := []map[string]string{
+		{
+			"domain": site.Name + ".lightspeed.ee",
+			"type":   "PRIMARY",
+		},
+	}
+	// Add any custom domains from the request as ALIAS domains
+	for _, domain := range site.Domains {
+		domains = append(domains, map[string]string{
+			"domain": domain,
+			"type":   "ALIAS",
+		})
+	}
+
 	// Build app spec using internal defaults
 	spec := map[string]interface{}{
 		"name":   site.Name,
@@ -187,12 +205,7 @@ func (h *SitesHandler) createSite(w http.ResponseWriter, r *http.Request, token 
 			{"rule": "DEPLOYMENT_FAILED"},
 			{"rule": "DOMAIN_FAILED"},
 		},
-		"domains": []map[string]string{
-			{
-				"domain": site.Name + ".lightspeed.ee",
-				"type":   "PRIMARY",
-			},
-		},
+		"domains": domains,
 		"ingress": map[string]interface{}{
 			"rules": []map[string]interface{}{
 				{
@@ -246,8 +259,9 @@ func (h *SitesHandler) createSite(w http.ResponseWriter, r *http.Request, token 
 
 	var result struct {
 		App struct {
-			ID   string `json:"id"`
-			Spec struct {
+			ID             string `json:"id"`
+			DefaultIngress string `json:"default_ingress"`
+			Spec           struct {
 				Name   string `json:"name"`
 				Region string `json:"region"`
 			} `json:"spec"`

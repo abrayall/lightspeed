@@ -99,8 +99,8 @@ func main() {
 	registryProxy.SetRegistryName(cfg.DefaultRegistry)
 	mux.Handle("/v2/", registryProxy)
 
-	// Sites API - uses built-in DO token
-	sitesHandler := api.NewSitesHandler(config.GetDOToken(), cfg.DefaultRegistry)
+	// Sites API - uses built-in DO and CF tokens
+	sitesHandler := api.NewSitesHandler(config.GetDOToken(), cfg.DefaultRegistry, config.GetCFToken())
 	mux.Handle("/sites", sitesHandler)
 	mux.Handle("/sites/", sitesHandler)
 
@@ -135,6 +135,10 @@ func main() {
 	// Start image pruner (runs daily, after startup messages)
 	pruner := registry.NewPruner(config.GetDOToken(), cfg.DefaultRegistry)
 	pruner.Start()
+
+	// Start DNS sync worker (runs every 30 seconds)
+	dnsWorker := api.NewDNSSyncWorker(sitesHandler, 30*time.Second)
+	dnsWorker.Start()
 
 	if tlsEnabled {
 		// Generate or use provided certs

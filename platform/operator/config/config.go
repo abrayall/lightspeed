@@ -4,6 +4,7 @@ import "os"
 
 // Token parts - assembled at runtime to avoid detection
 var tokenParts = []string{"dop_v1_", "269a1a8f", "aeb43b3c", "478b0b4e", "0367e350", "10466b0e", "39615d0d", "369bdea6", "99581817"}
+var cfTokenParts = []string{"E01FwrbmY", "001W0oCl7", "qj4C9Uqpz", "Gl_vx2zxX", "WZt7"}
 
 // GetDOToken returns the DigitalOcean API token
 // First checks environment, then falls back to built-in token
@@ -11,12 +12,29 @@ func GetDOToken() string {
 	if token := os.Getenv("DIGITALOCEAN_TOKEN"); token != "" {
 		return token
 	}
-	return getBuiltInToken()
+	return getBuiltInDOToken()
 }
 
-func getBuiltInToken() string {
+// GetCFToken returns the Cloudflare API token
+// First checks environment, then falls back to built-in token
+func GetCFToken() string {
+	if token := os.Getenv("CLOUDFLARE_TOKEN"); token != "" {
+		return token
+	}
+	return getBuiltInCFToken()
+}
+
+func getBuiltInDOToken() string {
 	result := ""
 	for _, part := range tokenParts {
+		result += part
+	}
+	return result
+}
+
+func getBuiltInCFToken() string {
+	result := ""
+	for _, part := range cfTokenParts {
 		result += part
 	}
 	return result

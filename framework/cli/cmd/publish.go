@@ -33,10 +33,24 @@ var publishCmd = &cobra.Command{
 		projectName := filepath.Base(dir)
 		imageName := sanitizeContainerName(projectName)
 
-		// Get site name (default to project name) - this becomes the image name
+		// Load site info from site.properties
+		siteInfo, err := loadSiteInfo(dir)
+		if err != nil {
+			ui.PrintError("Failed to load site.properties: %v", err)
+			os.Exit(1)
+		}
+
+		// Get site name (--name flag takes precedence, then site.properties, then directory name)
 		siteName := publishName
+		var domains []string
 		if siteName == "" {
 			siteName = imageName
+			if siteInfo != nil && siteInfo.Name != "" {
+				siteName = siteInfo.Name
+			}
+		}
+		if siteInfo != nil {
+			domains = siteInfo.Domains
 		}
 
 		// Determine version tag
@@ -60,11 +74,9 @@ var publishCmd = &cobra.Command{
 		versionImage := fmt.Sprintf("%s:%s", registryBase, tag)
 		latestImage := fmt.Sprintf("%s:latest", registryBase)
 
-		ui.PrintKeyValue("Project", projectName)
-		ui.PrintKeyValue("Version", tag)
+		printSiteInfo(siteName, tag, domains)
 		ui.PrintKeyValue("Registry", dockerRegistry)
 		ui.PrintKeyValue("Platform", apiHost)
-		ui.PrintKeyValue("Site", siteName)
 		fmt.Println()
 
 		// Check if Dockerfile exists, create if not

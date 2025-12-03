@@ -114,7 +114,29 @@ Options:
 - `-r, --region` - DigitalOcean region (default: nyc)
 - `-k, --token` - DigitalOcean API token
 
-If the app doesn't exist, it will be created automatically.
+If the app doesn't exist, it will be created automatically. Your site will be accessible at:
+- `https://[name].lightspeed.ee` (automatically configured)
+- `https://[name]-[hash].ondigitalocean.app` (DigitalOcean URL)
+
+## Configuration
+
+### site.properties
+
+Create a `site.properties` file in your project root to configure deployment:
+
+```properties
+# Site name (used for [name].lightspeed.ee)
+name=mysite
+
+# Custom domains (optional)
+domain=example.com
+domains=www.example.com,app.example.com
+```
+
+Properties:
+- `name` - Site name, used for lightspeed.ee subdomain
+- `domain` - Single custom domain
+- `domains` - Comma-separated list of custom domains
 
 ## Workflow
 

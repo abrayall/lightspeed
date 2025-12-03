@@ -5,8 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"lightspeed/core/lib/properties"
 	"lightspeed/core/lib/ui"
 	"lightspeed/core/lib/version"
 )
@@ -32,6 +34,23 @@ var buildCmd = &cobra.Command{
 		projectName := filepath.Base(dir)
 		imageName := sanitizeContainerName(projectName)
 
+		// Load site info from site.properties
+		siteInfo, err := loadSiteInfo(dir)
+		if err != nil {
+			ui.PrintError("Failed to load site.properties: %v", err)
+			os.Exit(1)
+		}
+
+		// Get site name
+		siteName := imageName
+		var domains []string
+		if siteInfo != nil {
+			if siteInfo.Name != "" {
+				siteName = siteInfo.Name
+			}
+			domains = siteInfo.Domains
+		}
+
 		// Determine tag
 		tag := buildTag
 		if tag == "" {
@@ -47,11 +66,9 @@ var buildCmd = &cobra.Command{
 			}
 		}
 
-		fullImageName := fmt.Sprintf("%s:%s", imageName, tag)
+		fullImageName := fmt.Sprintf("%s:%s", siteName, tag)
 
-		ui.PrintKeyValue("Project", projectName)
-		ui.PrintKeyValue("Version", tag)
-		fmt.Println()
+		printSiteInfo(siteName, tag, domains)
 
 		// Check if Dockerfile exists, create if not
 		dockerfilePath := filepath.Join(dir, "Dockerfile")
@@ -115,6 +132,56 @@ EXPOSE 80
 `, baseImage)
 
 	return os.WriteFile(path, []byte(content), 0644)
+}
+
+// SiteInfo holds information about a site from site.properties
+type SiteInfo struct {
+	Name    string
+	Domains []string
+}
+
+// loadSiteInfo loads site information from site.properties
+func loadSiteInfo(dir string) (*SiteInfo, error) {
+	propsPath := filepath.Join(dir, "site.properties")
+	if !properties.FileExists(propsPath) {
+		return nil, nil
+	}
+
+	props, err := properties.ParseProperties(propsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &SiteInfo{}
+
+	// Get site name
+	name := props.Get("name")
+	if name != "" {
+		info.Name = sanitizeContainerName(name)
+	}
+
+	// Get domains
+	domain := props.Get("domain")
+	if domain != "" {
+		info.Domains = append(info.Domains, domain)
+	}
+	domainsList := props.GetList("domains")
+	info.Domains = append(info.Domains, domainsList...)
+
+	return info, nil
+}
+
+// printSiteInfo prints site information
+func printSiteInfo(siteName string, version string, domains []string) {
+	ui.PrintKeyValue("Site", siteName)
+	ui.PrintKeyValue("Version", version)
+	if len(domains) == 1 {
+		ui.PrintKeyValue("Domain", domains[0])
+		fmt.Println()
+	} else if len(domains) > 1 {
+		ui.PrintKeyValue("Domains", strings.Join(domains, ", "))
+		fmt.Println()
+	}
 }
 
 func init() {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"lightspeed/core/lib/properties"
 	"lightspeed/core/lib/ui"
 	"lightspeed/core/lib/version"
 )
@@ -46,6 +47,17 @@ var deployCmd = &cobra.Command{
 		projectName := filepath.Base(dir)
 		imageName := sanitizeContainerName(projectName)
 
+		// Load site.properties if it exists
+		var props properties.Properties
+		propsPath := filepath.Join(dir, "site.properties")
+		if properties.FileExists(propsPath) {
+			props, err = properties.ParseProperties(propsPath)
+			if err != nil {
+				ui.PrintError("Failed to parse site.properties: %v", err)
+				os.Exit(1)
+			}
+		}
+
 		// Determine version tag
 		tag := publishTag
 		if tag == "" {
@@ -60,14 +72,17 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		// Get site name (default to project name)
+		// Get site name from --name flag, then site.properties, then fallback to project name
 		siteName := deploySiteName
+		if siteName == "" && props != nil {
+			siteName = props.Get("name")
+		}
 		if siteName == "" {
 			siteName = imageName
 		}
 
 		// Set the publish name flag so publish command uses it
-		publishName = deploySiteName
+		publishName = siteName
 
 		// Step 1: Build and push the image (prints header and initial info including site and platform)
 		publishCmd.Run(cmd, args)
@@ -82,10 +97,22 @@ var deployCmd = &cobra.Command{
 		}
 
 		if !exists {
+			// Get domains from site.properties if available
+			var domains []string
+			if props != nil {
+				// Support both "domain" (single) and "domains" (list)
+				domain := props.Get("domain")
+				if domain != "" {
+					domains = append(domains, domain)
+				}
+				domainsList := props.GetList("domains")
+				domains = append(domains, domainsList...)
+			}
+
 			// Create new site
 			ui.PrintInfo("Creating site '%s'...", siteName)
 			// Use siteName for image because that's what publish command uses
-			err = createSite(apiURL, siteName, siteName, tag)
+			err = createSite(apiURL, siteName, siteName, tag, domains)
 			if err != nil {
 				ui.PrintError("Failed to create site: %v", err)
 				os.Exit(1)
@@ -94,63 +121,65 @@ var deployCmd = &cobra.Command{
 
 			// Wait for deployment to complete (new sites need to wait)
 			fmt.Println()
-			siteURL, err := waitForDeployment(apiURL, siteName)
+			_, err := waitForDeployment(apiURL, siteName)
 			if err != nil {
 				ui.PrintError("Deployment failed: %v", err)
 				os.Exit(1)
 			}
 
+			// Use lightspeed.ee URL
+			siteURL := fmt.Sprintf("https://%s.lightspeed.ee", siteName)
+
 			// Wait for site to respond
-			if siteURL != "" {
+			fmt.Println()
+			if err := waitForURLReady(siteURL); err != nil{
+				ui.PrintError("Site deployment completed but URL not responding: %v", err)
 				fmt.Println()
-				if err := waitForURLReady(siteURL); err != nil{
-					ui.PrintError("Site deployment completed but URL not responding: %v", err)
-					fmt.Println()
-					ui.PrintKeyValue("URL", siteURL)
-					os.Exit(1)
-				}
-
-				// Open browser
-				fmt.Println()
-				ui.PrintInfo("Opening browser...")
-				openBrowser(siteURL)
-
-				// Final success message
-				fmt.Println()
-				ui.PrintSuccess("Deployed successfully!")
-				fmt.Printf("  %s\n", siteURL)
+				ui.PrintKeyValue("URL", siteURL)
+				os.Exit(1)
 			}
+
+			// Open browser
+			fmt.Println()
+			ui.PrintInfo("Opening browser...")
+			openBrowser(siteURL)
+
+			// Final success message
+			fmt.Println()
+			ui.PrintSuccess("Deployed successfully!")
+			fmt.Printf("  %s\n", siteURL)
 		} else {
 			// Existing site - deploy_on_push triggers deployment automatically
 			// Wait for deployment to complete
 			ui.PrintInfo("Deployment triggered by image push")
 
 			fmt.Println()
-			siteURL, err := waitForRedeployment(apiURL, siteName)
+			_, err := waitForRedeployment(apiURL, siteName)
 			if err != nil {
 				ui.PrintError("Deployment failed: %v", err)
 				os.Exit(1)
 			}
 
+			// Use lightspeed.ee URL
+			siteURL := fmt.Sprintf("https://%s.lightspeed.ee", siteName)
+
 			// Wait for site to respond
-			if siteURL != "" {
+			fmt.Println()
+			if err := waitForURLReady(siteURL); err != nil {
+				ui.PrintError("Site deployment completed but URL not responding: %v", err)
 				fmt.Println()
-				if err := waitForURLReady(siteURL); err != nil {
-					ui.PrintError("Site deployment completed but URL not responding: %v", err)
-					fmt.Println()
-					ui.PrintKeyValue("URL", siteURL)
-					os.Exit(1)
-				}
-
-				// Open browser
-				fmt.Println()
-				ui.PrintInfo("Opening browser...")
-				openBrowser(siteURL)
-
-				fmt.Println()
-				ui.PrintSuccess("Deployed successfully!")
-				fmt.Printf("  %s\n", siteURL)
+				ui.PrintKeyValue("URL", siteURL)
+				os.Exit(1)
 			}
+
+			// Open browser
+			fmt.Println()
+			ui.PrintInfo("Opening browser...")
+			openBrowser(siteURL)
+
+			fmt.Println()
+			ui.PrintSuccess("Deployed successfully!")
+			fmt.Printf("  %s\n", siteURL)
 		}
 		fmt.Println()
 	},
@@ -169,13 +198,16 @@ func siteExists(operatorURL, name string) (bool, error) {
 }
 
 // createSite creates a new site via the operator API
-func createSite(operatorURL, name, image, tag string) error {
+func createSite(operatorURL, name, image, tag string, domains []string) error {
 	url := fmt.Sprintf("%s/sites", operatorURL)
 
-	payload := map[string]string{
+	payload := map[string]interface{}{
 		"name":  name,
 		"image": image,
 		"tag":   tag,
+	}
+	if len(domains) > 0 {
+		payload["domains"] = domains
 	}
 	body, _ := json.Marshal(payload)
 
