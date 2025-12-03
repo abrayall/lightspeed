@@ -69,31 +69,35 @@ if ! docker image inspect "lightspeed-server:${VERSION}" &>/dev/null; then
     echo ""
 fi
 
-# Login to GitHub Container Registry
-echo -e "${YELLOW}=== Authenticating to GitHub Container Registry ===${NC}"
-echo ""
-
-# Check for token in order: env var, config file, gh cli
-TOKEN_FILE="$HOME/.config/lightspeed/registry-token"
-
-if [ -n "$REGISTRY_TOKEN" ]; then
-    echo -e "${BLUE}Logging in with REGISTRY_TOKEN env var...${NC}"
-    echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ORG" --password-stdin
-elif [ -f "$TOKEN_FILE" ]; then
-    echo -e "${BLUE}Logging in with token from ~/.config/lightspeed/registry-token...${NC}"
-    cat "$TOKEN_FILE" | docker login ghcr.io -u "$GITHUB_ORG" --password-stdin
-elif command -v gh &>/dev/null; then
-    echo -e "${BLUE}Logging in with GitHub CLI...${NC}"
-    GH_USER=$(gh api user --jq '.login' 2>/dev/null || echo "$GITHUB_ORG")
-    gh auth token | docker login ghcr.io -u "$GH_USER" --password-stdin
-else
-    echo -e "${RED}Error: No GitHub authentication found${NC}"
+# Login to GitHub Container Registry (skip if already logged in via CI)
+if [ -z "$GITHUB_ACTIONS" ]; then
+    echo -e "${YELLOW}=== Authenticating to GitHub Container Registry ===${NC}"
     echo ""
-    echo "Options:"
-    echo "  1. Set REGISTRY_TOKEN environment variable"
-    echo "  2. Create ~/.config/lightspeed/registry-token with your token"
-    echo "  3. Install and authenticate GitHub CLI: gh auth login"
-    exit 1
+
+    # Check for token in order: env var, config file, gh cli
+    TOKEN_FILE="$HOME/.config/lightspeed/registry-token"
+
+    if [ -n "$REGISTRY_TOKEN" ]; then
+        echo -e "${BLUE}Logging in with REGISTRY_TOKEN env var...${NC}"
+        echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ORG" --password-stdin
+    elif [ -f "$TOKEN_FILE" ]; then
+        echo -e "${BLUE}Logging in with token from ~/.config/lightspeed/registry-token...${NC}"
+        cat "$TOKEN_FILE" | docker login ghcr.io -u "$GITHUB_ORG" --password-stdin
+    elif command -v gh &>/dev/null; then
+        echo -e "${BLUE}Logging in with GitHub CLI...${NC}"
+        GH_USER=$(gh api user --jq '.login' 2>/dev/null || echo "$GITHUB_ORG")
+        gh auth token | docker login ghcr.io -u "$GH_USER" --password-stdin
+    else
+        echo -e "${RED}Error: No GitHub authentication found${NC}"
+        echo ""
+        echo "Options:"
+        echo "  1. Set REGISTRY_TOKEN environment variable"
+        echo "  2. Create ~/.config/lightspeed/registry-token with your token"
+        echo "  3. Install and authenticate GitHub CLI: gh auth login"
+        exit 1
+    fi
+else
+    echo -e "${BLUE}Using existing GitHub Actions authentication${NC}"
 fi
 
 echo ""
