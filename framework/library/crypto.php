@@ -65,8 +65,8 @@ class Crypto {
     }
 
     private function loadSiteProperties(): array {
-        $path = 'site.properties';
-        if (!file_exists($path)) {
+        $path = $this->findSiteProperties();
+        if ($path === null) {
             return [];
         }
 
@@ -102,6 +102,22 @@ class Crypto {
         }
 
         return $result;
+    }
+
+    private function findSiteProperties(): ?string {
+        $candidates = [
+            'site.properties',
+            $_SERVER['DOCUMENT_ROOT'] . '/site.properties',
+            dirname($_SERVER['SCRIPT_FILENAME'] ?? '') . '/site.properties',
+        ];
+
+        foreach ($candidates as $path) {
+            if ($path && file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     private function deriveKeyFromIdentifier(string $identifier): string {

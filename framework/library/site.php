@@ -211,9 +211,6 @@ class Site {
         return (int) $value;
     }
 
-    /**
-     * Get an encrypted value (attempts decryption, falls back to raw value)
-     */
     public function getEncrypted(string $key, string $default = ''): string {
         $value = $this->get($key, $default);
 
@@ -221,11 +218,51 @@ class Site {
             return $default;
         }
 
+        $cacheKey = 'lightspeed_dec_' . md5($this->path . ':' . $key);
+
+        if (function_exists('apcu_fetch')) {
+            $this->checkCacheValidity();
+
+            $cached = apcu_fetch($cacheKey, $success);
+            if ($success) {
+                return $cached;
+            }
+        }
+
         try {
-            return crypto()->decrypt($value);
+            $decrypted = crypto()->decrypt($value);
+
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $decrypted, 0);
+            }
+
+            return $decrypted;
         } catch (RuntimeException $e) {
-            // Decryption failed - return raw value (might be plaintext)
             return $value;
+        }
+    }
+
+    private function checkCacheValidity(): void {
+        if (!file_exists($this->path)) {
+            return;
+        }
+
+        $mtimeKey = 'lightspeed_mtime_' . md5($this->path);
+        $currentMtime = filemtime($this->path);
+        $cachedMtime = apcu_fetch($mtimeKey, $success);
+
+        if (!$success || $cachedMtime < $currentMtime) {
+            $this->clearCache();
+            apcu_store($mtimeKey, $currentMtime, 0);
+        }
+    }
+
+    private function clearCache(): void {
+        if (function_exists('apcu_delete') && class_exists('APCUIterator')) {
+            $prefix = 'lightspeed_dec_' . md5($this->path . ':');
+            foreach (new APCUIterator('/^' . preg_quote($prefix) . '/') as $item) {
+                apcu_delete($item['key']);
+            }
         }
     }
 

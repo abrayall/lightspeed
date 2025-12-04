@@ -74,8 +74,10 @@ echo ""
 cat > "$BUILD_DIR/Dockerfile" << EOF
 FROM php:8.2-fpm
 
-# Install nginx
+# Install nginx and APCu
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+RUN pecl install apcu && docker-php-ext-enable apcu
+RUN echo 'apc.enable_cli=1' >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini
 
 # Configure nginx
 RUN echo 'server {\n\

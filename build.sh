@@ -131,6 +131,7 @@ echo -e "${BLUE}Creating ${LIBRARY_ZIP}...${NC}"
 LIBRARY_TMP=$(mktemp -d)
 mkdir -p "$LIBRARY_TMP/lightspeed"
 cp -r "$SCRIPT_DIR/framework/library/"* "$LIBRARY_TMP/lightspeed/"
+echo "version=${VERSION}" > "$LIBRARY_TMP/lightspeed/version.properties"
 
 cd "$LIBRARY_TMP"
 zip -r "$BUILD_DIR/$LIBRARY_ZIP" lightspeed -x "*.DS_Store" -x "*/test.php" -x "*/tests/*"
