@@ -133,7 +133,7 @@ mkdir -p "$LIBRARY_TMP/lightspeed"
 cp -r "$SCRIPT_DIR/framework/library/"* "$LIBRARY_TMP/lightspeed/"
 
 cd "$LIBRARY_TMP"
-zip -r "$BUILD_DIR/$LIBRARY_ZIP" lightspeed -x "*.DS_Store"
+zip -r "$BUILD_DIR/$LIBRARY_ZIP" lightspeed -x "*.DS_Store" -x "*/test.php" -x "*/tests/*"
 cd "$SCRIPT_DIR"
 rm -rf "$LIBRARY_TMP"
 
