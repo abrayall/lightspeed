@@ -35,7 +35,7 @@ done
 
 # Registry configuration
 REGISTRY="registry.digitalocean.com"
-REPO="lightspeed-images"
+REPO="abrayall"
 IMAGE="lightspeed-operator"
 
 # Get script directory
@@ -231,7 +231,7 @@ for app in data.get('apps', []):
         echo -e "${BLUE}Creating app '$APP_NAME'...${NC}"
 
         # Create app spec (single-line JSON for reliable parsing)
-        APP_SPEC='{"spec":{"name":"lightspeed-operator","region":"nyc","features":["buildpack-stack=ubuntu-22"],"alerts":[{"rule":"DEPLOYMENT_FAILED"},{"rule":"DOMAIN_FAILED"}],"domains":[{"domain":"api.lightspeed.ee","type":"PRIMARY"},{"domain":"registry.lightspeed.ee","type":"ALIAS"}],"ingress":{"rules":[{"component":{"name":"lightspeed-operator"},"match":{"path":{"prefix":"/"}}}]},"services":[{"name":"lightspeed-operator","http_port":80,"image":{"registry_type":"DOCR","registry":"lightspeed-images","repository":"lightspeed-operator","tag":"latest","deploy_on_push":{"enabled":true}},"health_check":{"http_path":"/health","initial_delay_seconds":5,"period_seconds":10,"timeout_seconds":3,"success_threshold":1,"failure_threshold":3},"instance_count":1,"instance_size_slug":"apps-s-1vcpu-0.5gb"}]}}'
+        APP_SPEC='{"spec":{"name":"lightspeed-operator","region":"nyc","features":["buildpack-stack=ubuntu-22"],"alerts":[{"rule":"DEPLOYMENT_FAILED"},{"rule":"DOMAIN_FAILED"}],"domains":[{"domain":"api.lightspeed.ee","type":"PRIMARY"},{"domain":"registry.lightspeed.ee","type":"ALIAS"}],"ingress":{"rules":[{"component":{"name":"lightspeed-operator"},"match":{"path":{"prefix":"/"}}}]},"services":[{"name":"lightspeed-operator","http_port":80,"image":{"registry_type":"DOCR","registry":"abrayall","repository":"lightspeed-operator","tag":"latest","deploy_on_push":{"enabled":true}},"health_check":{"http_path":"/health","initial_delay_seconds":5,"period_seconds":10,"timeout_seconds":3,"success_threshold":1,"failure_threshold":3},"instance_count":1,"instance_size_slug":"apps-s-1vcpu-0.5gb"}]}}'
 
         RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer $TOKEN" \

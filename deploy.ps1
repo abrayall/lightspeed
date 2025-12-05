@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 # Registry configuration
 $Registry = "registry.digitalocean.com"
-$Repo = "lightspeed-images"
+$Repo = "abrayall"
 $Image = "lightspeed-operator"
 
 # Colors

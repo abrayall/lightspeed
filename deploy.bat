@@ -6,7 +6,7 @@ setlocal enabledelayedexpansion
 
 :: Registry configuration
 set "REGISTRY=registry.digitalocean.com"
-set "REPO=lightspeed-images"
+set "REPO=abrayall"
 set "IMAGE=lightspeed-operator"
 
 :: Work directory
