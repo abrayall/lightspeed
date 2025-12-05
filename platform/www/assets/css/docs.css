@@ -185,6 +185,7 @@
 .docs-section .code-block code {
     background: transparent;
     padding: 0;
+    color: #ffffff;
 }
 
 /* Options Table */
