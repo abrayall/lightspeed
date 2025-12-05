@@ -3,19 +3,21 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Header scroll effect
+    // Header scroll effect (only on pages with hero)
     const header = document.querySelector('.site-header');
 
-    function handleScroll() {
-        if (window.scrollY > 50) {
-            header.classList.add('scrolled');
-        } else {
-            header.classList.remove('scrolled');
+    if (document.body.classList.contains('has-hero')) {
+        function handleScroll() {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
         }
-    }
 
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+    }
 
     // Mobile menu toggle
     const menuToggle = document.querySelector('.mobile-menu-toggle');
@@ -93,6 +95,34 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.feature-card, .step, .showcase-item').forEach(el => {
         observer.observe(el);
     });
+
+    // Active nav link highlighting based on scroll position
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+
+    function updateActiveNavLink() {
+        const scrollPos = window.scrollY + 100;
+
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+            const sectionId = section.getAttribute('id');
+
+            if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + sectionId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }
+
+    if (sections.length > 0 && navLinks.length > 0) {
+        window.addEventListener('scroll', updateActiveNavLink);
+        updateActiveNavLink();
+    }
 
     // Hero background - random selection
     const slides = document.querySelectorAll('.hero-bg .slide');

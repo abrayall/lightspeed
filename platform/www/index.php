@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="has-hero">
     <header class="site-header">
         <div class="container header-inner">
             <a href="#" class="logo">
@@ -24,11 +24,11 @@
             <nav class="main-nav">
                 <ul class="nav-menu">
                     <li><a href="#features">Features</a></li>
-                    <li><a href="#how-it-works">How It Works</a></li>
-                    <li><a href="#pricing">Pricing</a></li>
-                    <li><a href="#showcase">Showcase</a></li>
+                    <li><a href="#how-it-works">Get Started</a></li>
+                    <li><a href="docs/">Documentation</a></li>
+                    <!-- <li><a href="#showcase">Showcase</a></li> -->
                 </ul>
-                <a href="#get-started" class="btn btn-primary">Get Started</a>
+                <a href="#how-it-works" class="btn btn-primary">Develop Now</a>
             </nav>
             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                 <span></span>
@@ -48,10 +48,10 @@
             <div class="container">
                 <div class="hero-content">
                     <h1>Develop. Test. Deploy.<br><span class="highlight">At Lightspeed.</span></h1>
-                    <p>The fastest way to build and host websites. Simple development framework, instant deployment, and reliable hosting for just $29/month.</p>
+                    <p>The fastest way to build and host websites. Simple development framework, instant deployment, and reliable hosting.</p>
                     <div class="hero-cta">
-                        <a href="#get-started" class="btn btn-primary btn-lg">Start Building</a>
-                        <a href="#how-it-works" class="btn btn-outline btn-lg">Learn More</a>
+                        <a href="#how-it-works" class="btn btn-primary btn-lg">Start Building</a>
+                        <a href="docs/" class="btn btn-outline btn-lg">Learn More</a>
                     </div>
                     <div class="hero-terminal">
                         <div class="terminal-header">
@@ -60,11 +60,11 @@
                             <span class="terminal-dot green"></span>
                         </div>
                         <div class="terminal-body">
-                            <code><span class="prompt">$</span> lightspeed init mysite</code>
-                            <code class="output">Creating new Lightspeed project...</code>
-                            <code class="output success">Done! Your site is ready.</code>
+                            <code><span class="prompt">$</span> lightspeed init</code>
+                            <code class="output success">✓ Initialized Lightspeed project</code>
                             <code><span class="prompt">$</span> lightspeed start</code>
-                            <code class="output success">Server running at http://localhost:9000</code>
+                            <code class="output success">✓ Development server started</code>
+                            <code class="output url">  URL: http://localhost:9000</code>
                         </div>
                     </div>
                 </div>
@@ -158,13 +158,13 @@
                         <div class="step-number">1</div>
                         <div class="step-content">
                             <h3>Install Lightspeed</h3>
-                            <p>Install the Lightspeed CLI with a single command using npm or your favorite package manager.</p>
+                            <p>Install the Lightspeed CLI with a single command.</p>
                             <div class="code-block">
                                 <div class="code-header">
                                     <span>Terminal</span>
                                     <button class="copy-btn" aria-label="Copy code">Copy</button>
                                 </div>
-                                <pre><code><span class="prompt">$</span> npm install -g @aspect/lightspeed</code></pre>
+                                <pre><code><span class="prompt">$</span> curl -sfL https://raw.githubusercontent.com/abrayall/lightspeed/refs/heads/main/install.sh | sh -</code></pre>
                             </div>
                         </div>
                     </div>
@@ -179,14 +179,15 @@
                                     <span>Terminal</span>
                                     <button class="copy-btn" aria-label="Copy code">Copy</button>
                                 </div>
-                                <pre><code><span class="prompt">$</span> lightspeed init my-awesome-site
-<span class="output">Creating project structure...</span>
-<span class="output">Installing dependencies...</span>
-<span class="output success">Project created successfully!</span>
+                                <pre><code><span class="prompt">$</span> mkdir my-awesome-site && cd my-awesome-site
+<span class="prompt">$</span> lightspeed init
+<span class="output success">✓ Initialized Lightspeed project</span>
+<span class="output">...</span>
+<span class="output">• Run 'lightspeed start' to start the development server</span>
 
-<span class="prompt">$</span> cd my-awesome-site
 <span class="prompt">$</span> lightspeed start
-<span class="output success">Development server running at http://localhost:9000</span></code></pre>
+<span class="output success">✓ Development server started</span>
+<span class="output url">  URL: http://localhost:9000</span></code></pre>
                             </div>
                         </div>
                     </div>
@@ -202,10 +203,12 @@
                                     <button class="copy-btn" aria-label="Copy code">Copy</button>
                                 </div>
                                 <pre><code><span class="prompt">$</span> lightspeed deploy
-<span class="output">Building for production...</span>
-<span class="output">Uploading to Lightspeed Cloud...</span>
-<span class="output success">Deployed! Your site is live at:</span>
-<span class="output url">https://my-awesome-site.lightspeed.dev</span></code></pre>
+<span class="output">• Building Docker image...</span>
+<span class="output">...</span>
+<span class="output success">✓ Published successfully!</span>
+<span class="output">...</span>
+<span class="output success">✓ Deployed successfully!</span>
+<span class="output url">  https://my-awesome-site.lightspeed.ee</span></code></pre>
                             </div>
                         </div>
                     </div>
@@ -213,7 +216,7 @@
             </div>
         </section>
 
-        <!-- Pricing Section -->
+        <!-- Pricing Section (commented out)
         <section id="pricing" class="pricing-section">
             <div class="container">
                 <div class="section-header">
@@ -246,8 +249,9 @@
                 </div>
             </div>
         </section>
+        -->
 
-        <!-- Showcase Section -->
+        <!-- Showcase Section (commented out)
         <section id="showcase" class="showcase-section">
             <div class="container">
                 <div class="section-header">
@@ -304,8 +308,9 @@
                 </div>
             </div>
         </section>
+        -->
 
-        <!-- CTA Section -->
+        <!-- CTA Section (commented out)
         <section id="get-started" class="cta-section">
             <div class="container">
                 <div class="cta-content">
@@ -319,6 +324,7 @@
                 </div>
             </div>
         </section>
+        -->
     </main>
 
     <footer class="site-footer">
@@ -333,38 +339,29 @@
                         </svg>
                         <span class="logo-text">Lightspeed</span>
                     </a>
-                    <p>Build, deploy, and host websites at <span style="color: var(--accent); font-weight: 700;">lightspeed</span>.</p>
+                    <p>Build, deploy, and host websites at <span style="color: var(--accent); font-weight: 700;">Lightspeed</span>.</p>
                 </div>
                 <div class="footer-links">
                     <div class="footer-col">
                         <h4>Product</h4>
                         <ul>
                             <li><a href="#features">Features</a></li>
-                            <li><a href="#pricing">Pricing</a></li>
-                            <li><a href="#showcase">Showcase</a></li>
+                            <!-- <li><a href="#showcase">Showcase</a></li> -->
                         </ul>
                     </div>
                     <div class="footer-col">
-                        <h4>Resources</h4>
+                        <h4>Documentation</h4>
                         <ul>
-                            <li><a href="#">Documentation</a></li>
-                            <li><a href="#">Tutorials</a></li>
-                            <li><a href="#">Blog</a></li>
-                        </ul>
-                    </div>
-                    <div class="footer-col">
-                        <h4>Company</h4>
-                        <ul>
-                            <li><a href="#">About</a></li>
-                            <li><a href="#">Contact</a></li>
-                            <li><a href="#">Support</a></li>
+                            <li><a href="docs/">Getting Started</a></li>
+                            <li><a href="docs/#cmd-init">CLI Commands</a></li>
+                            <li><a href="docs/#site-properties">Configuration</a></li>
                         </ul>
                     </div>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> Lightspeed. All rights reserved.</p>
-                <p>Powered by Lightspeed</p>
+                <p>&copy; <?php echo date('Y'); ?> <span style="color: var(--accent);">Lightspeed</span>. All rights reserved.</p>
+                <p>Built and hosted with <span style="color: var(--accent);">Lightspeed</span> v<?php require_once('lightspeed/version.php'); echo lightspeed_version(); ?></p>
             </div>
         </div>
     </footer>

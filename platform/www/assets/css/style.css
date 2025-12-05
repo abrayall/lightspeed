@@ -135,13 +135,15 @@ h4 { font-size: 1.125rem; }
     left: 0;
     right: 0;
     z-index: 1000;
-    background: transparent;
+    background: var(--white);
+    box-shadow: var(--shadow);
     transition: var(--transition);
 }
 
-.site-header.scrolled {
-    background: var(--white);
-    box-shadow: var(--shadow);
+/* Transparent header on hero pages (before scroll) */
+.has-hero .site-header:not(.scrolled) {
+    background: transparent;
+    box-shadow: none;
 }
 
 .header-inner {
@@ -172,7 +174,7 @@ h4 { font-size: 1.125rem; }
     color: #2d2d2d;
 }
 
-.site-header:not(.scrolled) .logo-text {
+.has-hero .site-header:not(.scrolled) .logo-text {
     color: var(--white);
 }
 
@@ -196,25 +198,30 @@ h4 { font-size: 1.125rem; }
     transition: var(--transition);
 }
 
-.site-header:not(.scrolled) .nav-menu a {
+.has-hero .site-header:not(.scrolled) .nav-menu a {
     color: rgba(255, 255, 255, 0.8);
 }
 
-.nav-menu a:hover {
+.nav-menu a:hover,
+.nav-menu a.active {
     color: var(--accent);
 }
 
-.site-header:not(.scrolled) .nav-menu a:hover {
+.has-hero .site-header:not(.scrolled) .nav-menu a:hover {
     color: var(--white);
 }
 
-.site-header:not(.scrolled) .btn-primary {
+.has-hero .site-header:not(.scrolled) .nav-menu a.active {
+    color: var(--accent);
+}
+
+.has-hero .site-header:not(.scrolled) .btn-primary {
     background: var(--white);
     color: var(--black);
     border-color: var(--white);
 }
 
-.site-header:not(.scrolled) .btn-primary:hover {
+.has-hero .site-header:not(.scrolled) .btn-primary:hover {
     background: var(--accent);
     border-color: var(--accent);
 }
@@ -237,7 +244,7 @@ h4 { font-size: 1.125rem; }
     transition: var(--transition);
 }
 
-.site-header:not(.scrolled) .mobile-menu-toggle span {
+.has-hero .site-header:not(.scrolled) .mobile-menu-toggle span {
     background: var(--white);
 }
 
@@ -370,6 +377,10 @@ h4 { font-size: 1.125rem; }
 
 .terminal-body .output.success {
     color: #27c93f;
+}
+
+.terminal-body .output.url {
+    color: var(--accent);
 }
 
 /* Section Styles */
@@ -649,7 +660,7 @@ h4 { font-size: 1.125rem; }
 /* Showcase */
 .showcase-section {
     padding: 8rem 0;
-    background: var(--off-white);
+    background: var(--white);
 }
 
 .showcase-grid {
@@ -867,11 +878,11 @@ h4 { font-size: 1.125rem; }
         gap: 1rem;
     }
 
-    .site-header:not(.scrolled) .nav-menu a {
+    .has-hero .site-header:not(.scrolled) .nav-menu a {
         color: var(--dark-gray);
     }
 
-    .site-header:not(.scrolled) .btn-primary {
+    .has-hero .site-header:not(.scrolled) .btn-primary {
         background: var(--accent);
         color: var(--black);
         border-color: var(--accent);
