@@ -3,21 +3,36 @@
  * Lightspeed CMS (Velocity)
  *
  * Read-only client for the Velocity headless CMS
+ * Supports APCu caching with stale-while-revalidate and ETag validation
  */
 
 require_once __DIR__ . '/site.php';
 
 class CMS {
+    private const CACHE_PREFIX = 'lightspeed_cms_';
+    private const DEFAULT_SOFT_TTL = 300;   // 5 minutes - serve stale, revalidate in background
+    private const DEFAULT_HARD_TTL = 3600;  // 1 hour - absolute expiration
+
     private string $endpoint;
     private string $tenant;
+    private int $softTtl;
+    private int $hardTtl;
+    private bool $cacheEnabled;
 
     /**
      * Create a new CMS client
      *
      * @param string|null $endpoint The Velocity API endpoint (defaults to velocity.ee)
      * @param string|null $tenant The tenant identifier (defaults to site name)
+     * @param int|null $softTtl Soft TTL in seconds (triggers background revalidation)
+     * @param int|null $hardTtl Hard TTL in seconds (absolute cache expiration)
      */
-    public function __construct(?string $endpoint = null, ?string $tenant = null) {
+    public function __construct(
+        ?string $endpoint = null,
+        ?string $tenant = null,
+        ?int $softTtl = null,
+        ?int $hardTtl = null
+    ) {
         $site = site();
 
         $this->endpoint = $endpoint
@@ -29,6 +44,24 @@ class CMS {
             ?: $site->name();
 
         $this->endpoint = rtrim($this->endpoint, '/');
+
+        $this->softTtl = $softTtl ?? $site->getInt('velocity.cache.soft_ttl', self::DEFAULT_SOFT_TTL);
+        $this->hardTtl = $hardTtl ?? $site->getInt('velocity.cache.hard_ttl', self::DEFAULT_HARD_TTL);
+
+        // Check if APCu is available
+        $apcuAvailable = function_exists('apcu_fetch') && apcu_enabled();
+
+        // Check if dev mode (version contains '-')
+        $version = $site->get('version', '');
+        $isDevMode = str_contains($version, '-');
+
+        // Cache enabled if: APCu available AND not dev mode AND velocity.cache is true (default true)
+        $this->cacheEnabled = $apcuAvailable && !$isDevMode && $site->getBoolean('velocity.cache', true);
+
+        // Setup webhook on first run if caching is enabled
+        if ($this->cacheEnabled) {
+            $this->ensureWebhookSetup();
+        }
     }
 
     /**
@@ -54,15 +87,35 @@ class CMS {
      * @return string|null The content or null if not found
      */
     public function get(string $id, string $type = 'content', string $contentType = 'html'): ?string {
-        $url = sprintf('%s/api/content/%s/%s', $this->endpoint, urlencode($type), urlencode($id));
+        $cacheKey = $this->cacheKey($type, $id, $contentType);
 
-        $headers = [
-            'X-Tenant: ' . $this->tenant,
-            'Accept: ' . $this->mimeType($contentType),
-        ];
+        // Try cache first
+        if ($this->cacheEnabled) {
+            $cached = apcu_fetch($cacheKey, $success);
+            if ($success && $cached) {
+                $isStale = time() > $cached['stale_at'];
 
-        $content = $this->fetch($url, $headers);
-        return $content !== false ? $content : null;
+                // If stale, trigger background revalidation
+                if ($isStale) {
+                    $this->revalidateInBackground($cacheKey, $cached, $type, $id, $contentType);
+                }
+
+                return $cached['content'];
+            }
+        }
+
+        // Cache miss - fetch fresh
+        $result = $this->fetchWithEtag($type, $id, $contentType);
+        if ($result === null) {
+            return null;
+        }
+
+        // Store in cache
+        if ($this->cacheEnabled) {
+            $this->storeInCache($cacheKey, $result['content'], $result['etag']);
+        }
+
+        return $result['content'];
     }
 
     /**
@@ -313,6 +366,288 @@ class CMS {
             'body' => $response,
             'headers' => $responseHeaders,
         ];
+    }
+
+    /**
+     * Generate cache key for content
+     */
+    private function cacheKey(string $type, string $id, string $contentType): string {
+        return self::CACHE_PREFIX . md5($this->endpoint . ':' . $this->tenant . ':' . $type . ':' . $id . ':' . $contentType);
+    }
+
+    /**
+     * Fetch content with ETag support
+     */
+    private function fetchWithEtag(string $type, string $id, string $contentType, ?string $etag = null): ?array {
+        $url = sprintf('%s/api/content/%s/%s', $this->endpoint, urlencode($type), urlencode($id));
+
+        $headers = [
+            'X-Tenant: ' . $this->tenant,
+            'Accept: ' . $this->mimeType($contentType),
+        ];
+
+        if ($etag !== null) {
+            $headers[] = 'If-None-Match: ' . $etag;
+        }
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers),
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $response = @file_get_contents($url, false, $context);
+
+        $statusCode = 0;
+        $responseEtag = null;
+
+        if (isset($http_response_header)) {
+            $statusLine = $http_response_header[0] ?? '';
+            if (preg_match('/HTTP\/[\d.]+\s+(\d+)/', $statusLine, $matches)) {
+                $statusCode = (int)$matches[1];
+            }
+
+            foreach ($http_response_header as $header) {
+                if (stripos($header, 'etag:') === 0) {
+                    $responseEtag = trim(substr($header, 5));
+                    break;
+                }
+            }
+        }
+
+        // 304 Not Modified
+        if ($statusCode === 304) {
+            return ['status' => 304, 'content' => null, 'etag' => $etag];
+        }
+
+        // Error
+        if ($statusCode >= 400 || $response === false) {
+            return null;
+        }
+
+        return [
+            'status' => $statusCode,
+            'content' => $response,
+            'etag' => $responseEtag,
+        ];
+    }
+
+    /**
+     * Store content in cache
+     */
+    private function storeInCache(string $cacheKey, string $content, ?string $etag): void {
+        $data = [
+            'content' => $content,
+            'etag' => $etag,
+            'cached_at' => time(),
+            'stale_at' => time() + $this->softTtl,
+        ];
+
+        apcu_store($cacheKey, $data, $this->hardTtl);
+    }
+
+    /**
+     * Revalidate content in background using ETag
+     * Uses a lock to prevent multiple simultaneous revalidations
+     */
+    private function revalidateInBackground(string $cacheKey, array $cached, string $type, string $id, string $contentType): void {
+        $lockKey = $cacheKey . '_lock';
+
+        // Try to acquire lock (expires in 30 seconds)
+        if (!apcu_add($lockKey, true, 30)) {
+            return; // Another process is already revalidating
+        }
+
+        // Perform conditional request with ETag
+        $result = $this->fetchWithEtag($type, $id, $contentType, $cached['etag']);
+
+        if ($result === null) {
+            // Fetch failed, keep stale content but extend TTL slightly
+            $cached['stale_at'] = time() + 60; // Retry in 1 minute
+            apcu_store($cacheKey, $cached, $this->hardTtl);
+        } elseif ($result['status'] === 304) {
+            // Not modified, refresh TTLs
+            $cached['stale_at'] = time() + $this->softTtl;
+            apcu_store($cacheKey, $cached, $this->hardTtl);
+        } else {
+            // Content changed, update cache
+            $this->storeInCache($cacheKey, $result['content'], $result['etag']);
+        }
+
+        apcu_delete($lockKey);
+    }
+
+    /**
+     * Clear all cached content for this tenant
+     */
+    public function clearCache(): void {
+        if (!$this->cacheEnabled || !class_exists('APCUIterator')) {
+            return;
+        }
+
+        $prefix = self::CACHE_PREFIX;
+        foreach (new \APCUIterator('/^' . preg_quote($prefix, '/') . '/') as $item) {
+            apcu_delete($item['key']);
+        }
+    }
+
+    /**
+     * Clear cached content for a specific item
+     */
+    public function clearCacheFor(string $id, string $type = 'content', string $contentType = 'html'): void {
+        if (!$this->cacheEnabled) {
+            return;
+        }
+
+        $cacheKey = $this->cacheKey($type, $id, $contentType);
+        apcu_delete($cacheKey);
+    }
+
+    /**
+     * Clear cached content for an item across all content types
+     */
+    public function clearCacheForAll(string $id, string $type = 'content'): void {
+        if (!$this->cacheEnabled || !class_exists('APCUIterator')) {
+            return;
+        }
+
+        // Match cache keys for this endpoint/tenant/type/id with any content type
+        $prefix = self::CACHE_PREFIX . md5($this->endpoint . ':' . $this->tenant . ':' . $type . ':' . $id . ':');
+
+        // Since we hash the full key, we need to try common content types
+        $contentTypes = ['html', 'json', 'xml', 'text', 'txt', 'php', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf'];
+        foreach ($contentTypes as $contentType) {
+            $cacheKey = $this->cacheKey($type, $id, $contentType);
+            apcu_delete($cacheKey);
+        }
+    }
+
+    /**
+     * Ensure webhook handler file exists and webhook is registered
+     */
+    private function ensureWebhookSetup(): void {
+        $setupKey = self::CACHE_PREFIX . 'webhook_setup_' . md5($this->endpoint . ':' . $this->tenant);
+
+        // Check if already setup in this cache lifetime
+        if (apcu_fetch($setupKey)) {
+            return;
+        }
+
+        // Find document root (where site.properties is)
+        $docRoot = $this->findDocumentRoot();
+        if ($docRoot === null) {
+            return;
+        }
+
+        // Ensure .velocity directory exists
+        $webhookDir = $docRoot . '/.velocity';
+        if (!is_dir($webhookDir)) {
+            @mkdir($webhookDir, 0755, true);
+        }
+
+        // Write webhook handler if it doesn't exist
+        $webhookFile = $webhookDir . '/webhook.php';
+        if (!file_exists($webhookFile)) {
+            $this->writeWebhookHandler($webhookFile);
+        }
+
+        // TODO: Register webhook with Velocity when API is available
+        // $this->registerWebhook($docRoot);
+
+        // Mark as setup (cache for 24 hours)
+        apcu_store($setupKey, true, 86400);
+    }
+
+    /**
+     * Find document root by locating site.properties
+     */
+    private function findDocumentRoot(): ?string {
+        $candidates = [
+            $_SERVER['DOCUMENT_ROOT'] ?? null,
+            dirname($_SERVER['SCRIPT_FILENAME'] ?? ''),
+            getcwd(),
+        ];
+
+        foreach ($candidates as $path) {
+            if ($path && file_exists($path . '/site.properties')) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Write the webhook handler PHP file
+     */
+    private function writeWebhookHandler(string $path): void {
+        $code = <<<'PHP'
+<?php
+/**
+ * Velocity CMS Webhook Handler
+ * Auto-generated by Lightspeed CMS client
+ */
+
+require_once 'lightspeed/cms.php';
+
+// Get payload
+$payload = json_decode(file_get_contents('php://input'), true);
+
+$type = $payload['type'] ?? null;
+$id = $payload['id'] ?? null;
+$operation = $payload['operation'] ?? 'update';
+
+// If no specific content specified, clear entire cache
+if (!$id) {
+    cms()->clearCache();
+    http_response_code(200);
+    echo json_encode(['status' => 'ok', 'cleared' => 'all']);
+    exit;
+}
+
+// Clear cache for specific item
+cms()->clearCacheForAll($id, $type ?? 'content');
+
+http_response_code(200);
+echo json_encode(['status' => 'ok', 'cleared' => ['type' => $type ?? 'content', 'id' => $id]]);
+PHP;
+
+        file_put_contents($path, $code);
+    }
+
+    /**
+     * Register webhook with Velocity
+     */
+    private function registerWebhook(string $docRoot): void {
+        $site = site();
+        $domain = $site->domain();
+
+        if ($domain === '') {
+            return; // Can't register without a domain
+        }
+
+        $protocol = $site->getBoolean('ssl', true) ? 'https' : 'http';
+        $webhookUrl = $protocol . '://' . $domain . '/.velocity/webhook.php';
+
+        $url = $this->endpoint . '/api/webhooks';
+        $payload = json_encode([
+            'tenant' => $this->tenant,
+            'url' => $webhookUrl,
+            'events' => ['content.published', 'content.deleted'],
+        ]);
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\nX-Tenant: " . $this->tenant,
+                'content' => $payload,
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        @file_get_contents($url, false, $context);
     }
 }
 
