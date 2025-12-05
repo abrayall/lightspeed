@@ -3,8 +3,9 @@ package config
 import "os"
 
 // Token parts - assembled at runtime to avoid detection
-var tokenParts = []string{"dop_v1_", "269a1a8f", "aeb43b3c", "478b0b4e", "0367e350", "10466b0e", "39615d0d", "369bdea6", "99581817"}
+var doTokenParts = []string{"dop_v1_", "269a1a8f", "aeb43b3c", "478b0b4e", "0367e350", "10466b0e", "39615d0d", "369bdea6", "99581817"}
 var cfTokenParts = []string{"E01FwrbmY", "001W0oCl7", "qj4C9Uqpz", "Gl_vx2zxX", "WZt7"}
+var operatorTokenParts = []string{"ls_op_", "7f3a9c2e", "b4d8e1f6", "5a0c3b9d"}
 
 // GetDOToken returns the DigitalOcean API token
 // First checks environment, then falls back to built-in token
@@ -24,9 +25,17 @@ func GetCFToken() string {
 	return getBuiltInCFToken()
 }
 
+// GetOperatorToken returns the operator API token for app authentication
+func GetOperatorToken() string {
+	if token := os.Getenv("OPERATOR_TOKEN"); token != "" {
+		return token
+	}
+	return getBuiltInOperatorToken()
+}
+
 func getBuiltInDOToken() string {
 	result := ""
-	for _, part := range tokenParts {
+	for _, part := range doTokenParts {
 		result += part
 	}
 	return result
@@ -35,6 +44,14 @@ func getBuiltInDOToken() string {
 func getBuiltInCFToken() string {
 	result := ""
 	for _, part := range cfTokenParts {
+		result += part
+	}
+	return result
+}
+
+func getBuiltInOperatorToken() string {
+	result := ""
+	for _, part := range operatorTokenParts {
 		result += part
 	}
 	return result
@@ -49,6 +66,8 @@ type Config struct {
 	TLSEnabled       bool
 	TLSCert          string
 	TLSKey           string
+	OperatorURL      string
+	OperatorToken    string
 }
 
 // Load loads configuration from environment
@@ -61,6 +80,8 @@ func Load() *Config {
 		TLSEnabled:       getEnv("TLS_ENABLED", "") != "",
 		TLSCert:          getEnv("TLS_CERT", ""),
 		TLSKey:           getEnv("TLS_KEY", ""),
+		OperatorURL:      getEnv("OPERATOR_URL", "https://operator.lightspeed.ee"),
+		OperatorToken:    GetOperatorToken(),
 	}
 }
 

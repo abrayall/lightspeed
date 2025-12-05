@@ -18,14 +18,18 @@ type SitesHandler struct {
 	defaultToken    string
 	defaultRegistry string
 	cfClient        *CloudflareClient
+	operatorURL     string
+	operatorToken   string
 }
 
 // NewSitesHandler creates a new sites handler
-func NewSitesHandler(defaultToken, defaultRegistry, cfToken string) *SitesHandler {
+func NewSitesHandler(defaultToken, defaultRegistry, cfToken, operatorURL, operatorToken string) *SitesHandler {
 	return &SitesHandler{
 		defaultToken:    defaultToken,
 		defaultRegistry: defaultRegistry,
 		cfClient:        NewCloudflareClient(cfToken),
+		operatorURL:     operatorURL,
+		operatorToken:   operatorToken,
 	}
 }
 
@@ -235,6 +239,18 @@ func (h *SitesHandler) createSite(w http.ResponseWriter, r *http.Request, token 
 				},
 				"instance_count":     defaultInstances,
 				"instance_size_slug": defaultSize,
+				"envs": []map[string]interface{}{
+					{
+						"key":   "OPERATOR_URL",
+						"value": h.operatorURL,
+						"type":  "GENERAL",
+					},
+					{
+						"key":   "OPERATOR_TOKEN",
+						"value": h.operatorToken,
+						"type":  "SECRET",
+					},
+				},
 			},
 		},
 	}

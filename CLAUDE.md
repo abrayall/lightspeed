@@ -170,3 +170,16 @@ lightspeed keys                  # List API keys
 lightspeed keys create           # Create new API key
 lightspeed keys revoke <id>      # Revoke an API key
 ```
+
+### Velocity Webhook Registration via Operator
+
+When `OPERATOR_URL` env var is set (injected by operator when creating apps), the PHP CMS client should NOT register webhooks directly with Velocity. Instead, the operator will:
+1. Register a single webhook endpoint with Velocity for all tenants
+2. Receive content change notifications from Velocity
+3. Route the change messages to the appropriate app's `/.velocity/webhook.php` endpoint
+
+This centralizes webhook management and avoids each app needing to register independently.
+
+### Remove Hardcoded Tokens
+
+Move hardcoded tokens (DO, Cloudflare, Operator) from `platform/operator/config/config.go` to GitHub Actions secrets and inject via `deploy.sh` at build/deploy time. Tokens should only be passed via environment variables in production.

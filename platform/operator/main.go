@@ -78,12 +78,17 @@ func main() {
 	// Print header
 	ui.PrintHeader(Version)
 
+	// Load full config (includes operator URL and token)
+	fullCfg := config.Load()
+
 	// Build config from CLI flags (which already have env/defaults applied)
 	cfg := &config.Config{
 		Port:             port,
 		PublicHost:       publicHost,
 		UpstreamRegistry: upstreamRegistry,
 		DefaultRegistry:  defaultRegistry,
+		OperatorURL:      fullCfg.OperatorURL,
+		OperatorToken:    fullCfg.OperatorToken,
 	}
 
 	// Create router
@@ -100,7 +105,7 @@ func main() {
 	mux.Handle("/v2/", registryProxy)
 
 	// Sites API - uses built-in DO and CF tokens
-	sitesHandler := api.NewSitesHandler(config.GetDOToken(), cfg.DefaultRegistry, config.GetCFToken())
+	sitesHandler := api.NewSitesHandler(config.GetDOToken(), cfg.DefaultRegistry, config.GetCFToken(), cfg.OperatorURL, cfg.OperatorToken)
 	mux.Handle("/sites", sitesHandler)
 	mux.Handle("/sites/", sitesHandler)
 

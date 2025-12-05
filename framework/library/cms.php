@@ -622,8 +622,14 @@ PHP;
      */
     private function registerWebhook(string $docRoot): void {
         $site = site();
-        $domain = $site->domain();
 
+        // Don't register webhooks in dev mode
+        $version = $site->get('version', '');
+        if (str_contains($version, '-')) {
+            return;
+        }
+
+        $domain = $site->domain();
         if ($domain === '') {
             return; // Can't register without a domain
         }
