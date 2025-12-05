@@ -51,30 +51,8 @@ echo -e "${YELLOW}Lightspeed Operator Deploy${NC}"
 echo "=============================================="
 echo ""
 
-# Get version from git
-GIT_DESCRIBE=$(git describe --tags --match "v*.*.*" 2>/dev/null || echo "v0.1.0")
-
-if [[ "$GIT_DESCRIBE" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-g([0-9a-f]+))?$ ]]; then
-    MAJOR="${BASH_REMATCH[1]}"
-    MINOR="${BASH_REMATCH[2]}"
-    MAINTENANCE="${BASH_REMATCH[3]}"
-    COMMIT_COUNT="${BASH_REMATCH[5]}"
-
-    if [[ -n "$COMMIT_COUNT" ]]; then
-        VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}-${COMMIT_COUNT}"
-    else
-        VERSION="${MAJOR}.${MINOR}.${MAINTENANCE}"
-    fi
-else
-    VERSION="0.1.0"
-fi
-
-# Check for uncommitted changes
-if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-    TIMESTAMP=$(date +"%m%d%H%M")
-    VERSION="${VERSION}-${TIMESTAMP}"
-    echo -e "${GRAY}Detected uncommitted changes, appending timestamp${NC}"
-fi
+# Get version using vermouth
+VERSION=$(vermouth 2>/dev/null || curl -sfL https://raw.githubusercontent.com/abrayall/vermouth/refs/heads/main/vermouth.sh | sh -)
 
 # Full image names
 VERSION_TAG="${REGISTRY}/${REPO}/${IMAGE}:${VERSION}"

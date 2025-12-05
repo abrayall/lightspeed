@@ -28,24 +28,20 @@ if [ -z "$GITHUB_TOKEN" ]; then
     exit 1
 fi
 
-# Get version from git
-GIT_DESCRIBE=$(git describe --tags --exact-match 2>/dev/null || echo "")
+# Get version using vermouth
+VERSION=$(vermouth 2>/dev/null || curl -sfL https://raw.githubusercontent.com/abrayall/vermouth/refs/heads/main/vermouth.sh | sh -)
 
-if [ -z "$GIT_DESCRIBE" ]; then
-    echo -e "${RED}Error: Not on a tagged commit${NC}"
-    echo -e "${GRAY}Please create a tag first (e.g., git tag v0.3.0)${NC}"
+# Validate this is a clean release version (X.Y.Z format, no dev suffix)
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo -e "${RED}Error: Not a release version${NC}"
+    echo -e "${GRAY}Current version: $VERSION${NC}"
+    echo -e "${GRAY}Release versions must match X.Y.Z format (e.g., 0.3.0)${NC}"
+    echo -e "${GRAY}Make sure you're on a tagged commit with no uncommitted changes${NC}"
     exit 1
 fi
 
-# Check if version matches vX.Y.Z format (no dev builds)
-if [[ ! "$GIT_DESCRIBE" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo -e "${RED}Error: Not a release version tag${NC}"
-    echo -e "${GRAY}Current tag: $GIT_DESCRIBE${NC}"
-    echo -e "${GRAY}Release tags must match vX.Y.Z format (e.g., v0.3.0)${NC}"
-    exit 1
-fi
-
-VERSION="$GIT_DESCRIBE"
+# Add v prefix for git tag format
+VERSION="v${VERSION}"
 
 echo -e "${BLUE}Version:${NC} $VERSION"
 echo ""
