@@ -60,8 +60,12 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Get project name from directory
+		// Get project name from site.properties, fallback to directory name
 		projectName := filepath.Base(dir)
+		siteInfo, _ := loadSiteInfo(dir)
+		if siteInfo != nil && siteInfo.Name != "" {
+			projectName = siteInfo.Name
+		}
 		containerName := fmt.Sprintf("lightspeed-%s", sanitizeContainerName(projectName))
 
 		// Check if container is already running
@@ -140,7 +144,12 @@ var stopCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Get project name from site.properties, fallback to directory name
 		projectName := filepath.Base(dir)
+		siteInfo, _ := loadSiteInfo(dir)
+		if siteInfo != nil && siteInfo.Name != "" {
+			projectName = siteInfo.Name
+		}
 		containerName := fmt.Sprintf("lightspeed-%s", sanitizeContainerName(projectName))
 
 		if !isContainerRunning(containerName) {
