@@ -101,8 +101,10 @@ var buildCmd = &cobra.Command{
 		fmt.Println()
 
 		// Build the image for linux/amd64 platform
+		// Use --pull to always get the latest base image
 		dockerArgs := []string{
 			"build",
+			"--pull",
 			"--platform", "linux/amd64",
 			"-t", fullImageName,
 			".",
