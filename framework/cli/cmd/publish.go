@@ -101,8 +101,10 @@ var publishCmd = &cobra.Command{
 		ui.PrintInfo("Building Docker image...")
 		fmt.Println()
 
+		// Use --pull to always get the latest base image
 		buildArgs := []string{
 			"build",
+			"--pull",
 			"--platform", "linux/amd64",
 			"-t", versionImage,
 			"-t", latestImage,
