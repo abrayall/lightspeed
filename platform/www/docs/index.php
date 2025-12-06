@@ -1,44 +1,39 @@
-<?php require_once('lightspeed/version.php'); ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentation | Lightspeed</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='24' cy='24' r='22' fill='%23deb841'/><circle cx='24' cy='24' r='10' fill='white'/><circle cx='24' cy='24' r='7' fill='%23deb841'/></svg>">
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/docs.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-</head>
-<body class="docs-page">
-    <header class="site-header">
-        <div class="container header-inner">
-            <a href="../" class="logo">
-                <svg class="logo-icon" width="28" height="28" viewBox="0 0 48 48">
-                    <circle cx="24" cy="24" r="22" fill="var(--accent)"/>
-                    <circle cx="24" cy="24" r="10" fill="white"/>
-                    <circle cx="24" cy="24" r="7" fill="var(--accent)"/>
-                </svg>
-                <span class="logo-text">Lightspeed</span>
-            </a>
-            <nav class="main-nav">
-                <ul class="nav-menu">
-                    <li><a href="../#features">Features</a></li>
-                    <li><a href="../#how-it-works">Get Started</a></li>
-                    <li><a href="./" class="active">Documentation</a></li>
-                    <li><a href="../#showcase">Showcase</a></li>
-                </ul>
-                <a href="../#how-it-works" class="btn btn-primary">Develop Now</a>
-            </nav>
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </header>
+<?php
+$pageTitle = 'Documentation | Lightspeed';
+$basePath = '../';
+$bodyClass = 'docs-page';
+$extraCss = ['../assets/css/docs.css'];
+$currentPage = 'docs';
+$extraJs = '
+    <script>
+        // Docs navigation highlighting
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            const sections = document.querySelectorAll(\'.docs-section\');
+            const navLinks = document.querySelectorAll(\'.docs-nav a\');
+
+            function updateActiveLink() {
+                let current = \'\';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    if (window.scrollY >= sectionTop) {
+                        current = section.getAttribute(\'id\');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove(\'active\');
+                    if (link.getAttribute(\'href\') === \'#\' + current) {
+                        link.classList.add(\'active\');
+                    }
+                });
+            }
+
+            window.addEventListener(\'scroll\', updateActiveLink);
+            updateActiveLink();
+        });
+    </script>';
+include '../includes/header.php';
+?>
 
     <div class="docs-layout">
         <aside class="docs-sidebar">
@@ -1067,72 +1062,4 @@ open -a Docker</code></pre>
         </main>
     </div>
 
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    <a href="../" class="logo">
-                        <svg class="logo-icon" width="28" height="28" viewBox="0 0 48 48">
-                            <circle cx="24" cy="24" r="22" fill="var(--accent)"/>
-                            <circle cx="24" cy="24" r="10" fill="white"/>
-                            <circle cx="24" cy="24" r="7" fill="var(--accent)"/>
-                        </svg>
-                        <span class="logo-text">Lightspeed</span>
-                    </a>
-                    <p>Build, deploy, and host websites at <span style="color: var(--accent); font-weight: 700;">Lightspeed</span>.</p>
-                </div>
-                <div class="footer-links">
-                    <div class="footer-col">
-                        <h4>Product</h4>
-                        <ul>
-                            <li><a href="../#features">Features</a></li>
-                            <li><a href="../#showcase">Showcase</a></li>
-                        </ul>
-                    </div>
-                    <div class="footer-col">
-                        <h4>Documentation</h4>
-                        <ul>
-                            <li><a href="./">Getting Started</a></li>
-                            <li><a href="./#cmd-init">CLI Commands</a></li>
-                            <li><a href="./#site-properties">Configuration</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <span style="color: var(--accent);">Lightspeed</span>. All rights reserved.</p>
-                <p>Built and hosted with <span style="color: var(--accent);">Lightspeed</span> v<?php echo lightspeed_version(); ?></p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="../assets/js/main.js"></script>
-    <script>
-        // Docs navigation highlighting
-        document.addEventListener('DOMContentLoaded', function() {
-            const sections = document.querySelectorAll('.docs-section');
-            const navLinks = document.querySelectorAll('.docs-nav a');
-
-            function updateActiveLink() {
-                let current = '';
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop - 100;
-                    if (window.scrollY >= sectionTop) {
-                        current = section.getAttribute('id');
-                    }
-                });
-
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href') === '#' + current) {
-                        link.classList.add('active');
-                    }
-                });
-            }
-
-            window.addEventListener('scroll', updateActiveLink);
-            updateActiveLink();
-        });
-    </script>
-</body>
-</html>
+<?php include '../includes/footer.php'; ?>
