@@ -55,16 +55,29 @@ RUN echo 'server {\n\
     root /var/www/html;\n\
     index index.php index.html;\n\
 \n\
+    error_page 400 401 403 404 405 500 502 503 504 /error.php;\n\
+\n\
+    location ~ ^/_/(.+?)(?:\.php)?\$ {\n\
+        fastcgi_intercept_errors on;\n\
+        fastcgi_pass 127.0.0.1:9000;\n\
+        fastcgi_param SCRIPT_FILENAME /tmp/lightspeed/\$1.php;\n\
+        include fastcgi_params;\n\
+    }\n\
+\n\
     location / {\n\
         try_files \$uri \$uri/ \$uri.php?\$query_string;\n\
     }\n\
 \n\
     location ~ \.php\$ {\n\
+        fastcgi_intercept_errors on;\n\
         fastcgi_pass 127.0.0.1:9000;\n\
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n\
         include fastcgi_params;\n\
     }\n\
 }' > /etc/nginx/sites-available/default
+
+# Create lightspeed directory in tmp for generated handlers
+RUN mkdir -p /tmp/lightspeed && chmod 777 /tmp/lightspeed
 
 # Create lightspeed directory and store version
 RUN mkdir -p /opt/lightspeed

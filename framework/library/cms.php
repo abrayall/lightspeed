@@ -531,48 +531,23 @@ class CMS {
             return;
         }
 
-        // Find document root (where site.properties is)
-        $docRoot = $this->findDocumentRoot();
-        if ($docRoot === null) {
-            return;
-        }
-
-        // Ensure .velocity directory exists
-        $webhookDir = $docRoot . '/.velocity';
-        if (!is_dir($webhookDir)) {
-            @mkdir($webhookDir, 0755, true);
+        // Use /tmp/lightspeed/velocity for generated files (nginx routes /_/ to /tmp/lightspeed/)
+        $velocityDir = '/tmp/lightspeed/velocity';
+        if (!is_dir($velocityDir)) {
+            @mkdir($velocityDir, 0777, true);
         }
 
         // Write cache handler if it doesn't exist
-        $cacheFile = $webhookDir . '/cache.php';
+        $cacheFile = $velocityDir . '/cache.php';
         if (!file_exists($cacheFile)) {
             $this->writeCacheHandler($cacheFile);
         }
 
         // TODO: Register webhook with Velocity when API is available
-        // $this->registerWebhook($docRoot);
+        // $this->registerWebhook();
 
         // Mark as setup (cache for 24 hours)
         apcu_store($setupKey, true, 86400);
-    }
-
-    /**
-     * Find document root by locating site.properties
-     */
-    private function findDocumentRoot(): ?string {
-        $candidates = [
-            $_SERVER['DOCUMENT_ROOT'] ?? null,
-            dirname($_SERVER['SCRIPT_FILENAME'] ?? ''),
-            getcwd(),
-        ];
-
-        foreach ($candidates as $path) {
-            if ($path && file_exists($path . '/site.properties')) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -639,7 +614,7 @@ PHP;
     /**
      * Register webhook with Velocity
      */
-    private function registerWebhook(string $docRoot): void {
+    private function registerWebhook(): void {
         $site = site();
 
         $domain = $site->domain();
@@ -648,7 +623,7 @@ PHP;
         }
 
         $protocol = $site->getBoolean('ssl', true) ? 'https' : 'http';
-        $webhookUrl = $protocol . '://' . $domain . '/.velocity/cache.php?operation=clear';
+        $webhookUrl = $protocol . '://' . $domain . '/_/velocity/cache.php?operation=clear';
 
         $url = $this->endpoint . '/api/webhooks';
         $payload = json_encode([
