@@ -1,60 +1,23 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
-// Token parts - assembled at runtime to avoid detection
-var doTokenParts = []string{"dop_v1_", "269a1a8f", "aeb43b3c", "478b0b4e", "0367e350", "10466b0e", "39615d0d", "369bdea6", "99581817"}
-var cfTokenParts = []string{"E01FwrbmY", "001W0oCl7", "qj4C9Uqpz", "Gl_vx2zxX", "WZt7"}
-var operatorTokenParts = []string{"ls_op_", "7f3a9c2e", "b4d8e1f6", "5a0c3b9d"}
-
-// GetDOToken returns the DigitalOcean API token
-// First checks environment, then falls back to built-in token
+// GetDOToken returns the DigitalOcean API token from environment
 func GetDOToken() string {
-	if token := os.Getenv("DIGITALOCEAN_TOKEN"); token != "" {
-		return token
-	}
-	return getBuiltInDOToken()
+	return requireEnv("DIGITALOCEAN_TOKEN")
 }
 
-// GetCFToken returns the Cloudflare API token
-// First checks environment, then falls back to built-in token
+// GetCFToken returns the Cloudflare API token from environment
 func GetCFToken() string {
-	if token := os.Getenv("CLOUDFLARE_TOKEN"); token != "" {
-		return token
-	}
-	return getBuiltInCFToken()
+	return requireEnv("CLOUDFLARE_TOKEN")
 }
 
-// GetOperatorToken returns the operator API token for app authentication
+// GetOperatorToken returns the operator API token from environment
 func GetOperatorToken() string {
-	if token := os.Getenv("OPERATOR_TOKEN"); token != "" {
-		return token
-	}
-	return getBuiltInOperatorToken()
-}
-
-func getBuiltInDOToken() string {
-	result := ""
-	for _, part := range doTokenParts {
-		result += part
-	}
-	return result
-}
-
-func getBuiltInCFToken() string {
-	result := ""
-	for _, part := range cfTokenParts {
-		result += part
-	}
-	return result
-}
-
-func getBuiltInOperatorToken() string {
-	result := ""
-	for _, part := range operatorTokenParts {
-		result += part
-	}
-	return result
+	return requireEnv("OPERATOR_TOKEN")
 }
 
 // Config holds operator configuration
@@ -90,4 +53,12 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func requireEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Printf("[CONFIG] WARNING: %s environment variable is not set", key)
+	}
+	return value
 }
