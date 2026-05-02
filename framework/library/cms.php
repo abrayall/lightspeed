@@ -903,8 +903,8 @@ PHP;
         $site = site();
 
         $domain = $site->domain();
-        if ($domain === '') {
-            return; // Can't register without a domain
+        if ($domain === '' || $this->isLocalDomain($domain)) {
+            return; // Can't register without a routable domain
         }
 
         $protocol = $site->getBoolean('ssl', true) ? 'https' : 'http';
@@ -927,6 +927,17 @@ PHP;
         ]);
 
         @file_get_contents($url, false, $context);
+    }
+
+    /**
+     * Check if a domain is local/non-routable and should not be registered as a webhook
+     */
+    private function isLocalDomain(string $domain): bool {
+        $host = strtolower(parse_url('//' . $domain, PHP_URL_HOST) ?? $domain);
+        return in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'])
+            || str_ends_with($host, '.local')
+            || str_ends_with($host, '.test')
+            || str_ends_with($host, '.localhost');
     }
 }
 

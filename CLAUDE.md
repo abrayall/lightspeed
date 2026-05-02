@@ -183,3 +183,22 @@ This centralizes webhook management and avoids each app needing to register inde
 ### Remove Hardcoded Tokens
 
 Move hardcoded tokens (DO, Cloudflare, Operator) from `platform/operator/config/config.go` to GitHub Actions secrets and inject via `deploy.sh` at build/deploy time. Tokens should only be passed via environment variables in production.
+
+### Image Registry Cleanup
+
+The Operator should periodically clean up old/unused images from the DO Container Registry to control storage costs:
+
+**Cleanup Rules:**
+- Keep `latest` tag always
+- Keep the 3 most recent semver tags per repository
+- Delete untagged/dangling manifests
+- Delete images older than 30 days with no recent pulls
+
+**Triggers:**
+- Run on operator startup
+- Run as background goroutine on a schedule (daily)
+
+**Implementation:**
+- Use DO Registry API to list repositories and tags
+- Use DO Registry garbage collection API after deletions
+- Log cleanup actions for audit trail

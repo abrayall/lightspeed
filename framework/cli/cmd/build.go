@@ -90,7 +90,7 @@ var buildCmd = &cobra.Command{
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath, siteImage); err != nil {
+			if err := createDockerfile(dockerfilePath, siteImage, tag); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
@@ -135,19 +135,22 @@ var buildCmd = &cobra.Command{
 	},
 }
 
-func createDockerfile(path string, siteImage string) error {
+func createDockerfile(path string, siteImage string, version string) error {
 	baseImage := getBaseImage(siteImage)
 	content := fmt.Sprintf(`FROM %s
 
 # Copy project files
 COPY . /var/www/html/
 
+# Inject site version
+RUN echo 'version=%s' > /var/www/html/version.properties
+
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html
 
 # Expose port 80
 EXPOSE 80
-`, baseImage)
+`, baseImage, version)
 
 	return os.WriteFile(path, []byte(content), 0644)
 }

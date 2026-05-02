@@ -77,6 +77,7 @@ func init() {
 		// Update .idea config if site.properties and .idea exist
 		if dir, err := os.Getwd(); err == nil {
 			updateIdeaConfig(dir)
+			upgradeClaudeSkill(dir)
 		}
 
 		if originalPreRun != nil {

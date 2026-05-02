@@ -13,6 +13,8 @@ import (
 var (
 	initName    string
 	initDomains []string
+	initGit     bool
+	initClaude  bool
 )
 
 var initCmd = &cobra.Command{
@@ -150,18 +152,69 @@ h1 {
 			// .idea existed but we may have updated php.xml
 		}
 
-		// Create .gitignore if it doesn't exist
-		gitignorePath := filepath.Join(dir, ".gitignore")
-		if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
-			gitignoreContent := `.DS_Store
+		// Create GitHub Actions deploy workflow if --git flag is set
+		if initGit {
+			workflowDir := filepath.Join(dir, ".github", "workflows")
+			if _, err := os.Stat(workflowDir); os.IsNotExist(err) {
+				if err := os.MkdirAll(workflowDir, 0755); err != nil {
+					ui.PrintWarning("Failed to create .github/workflows directory: %v", err)
+				}
+			}
+			workflowPath := filepath.Join(workflowDir, "deploy.yml")
+			if _, err := os.Stat(workflowPath); os.IsNotExist(err) {
+				workflowContent := `name: deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Install Lightspeed
+        run: curl -sfL https://raw.githubusercontent.com/abrayall/lightspeed/refs/heads/main/install.sh | sh -
+
+      - name: Deploy
+        run: lightspeed deploy
+`
+				if err := os.WriteFile(workflowPath, []byte(workflowContent), 0644); err != nil {
+					ui.PrintWarning("Failed to create deploy.yml: %v", err)
+				} else {
+					created = append(created, ".github/workflows/deploy.yml")
+				}
+			}
+		}
+
+		// Create .gitignore if --git flag is set
+		if initGit {
+			gitignorePath := filepath.Join(dir, ".gitignore")
+			if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
+				gitignoreContent := `.DS_Store
 *.log
 lightspeed
 `
-			if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
-				ui.PrintWarning("Failed to create .gitignore: %v", err)
-			} else {
-				created = append(created, ".gitignore")
+				if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
+					ui.PrintWarning("Failed to create .gitignore: %v", err)
+				} else {
+					created = append(created, ".gitignore")
+				}
 			}
+		}
+
+		// Create Claude Code support files if --claude flag is set
+		if initClaude {
+			claudeFiles := addClaudeSupport(dir)
+			created = append(created, claudeFiles...)
 		}
 
 		// Print success
@@ -190,6 +243,8 @@ lightspeed
 func init() {
 	initCmd.Flags().StringVarP(&initName, "name", "n", "", "Site name (default: directory name)")
 	initCmd.Flags().StringSliceVarP(&initDomains, "domain", "d", nil, "Domain(s) for the site (default: name.com)")
+	initCmd.Flags().BoolVarP(&initGit, "git", "g", false, "Generate GitHub Actions deploy workflow")
+	initCmd.Flags().BoolVarP(&initClaude, "claude", "c", false, "Generate Claude Code support files")
 
 	rootCmd.AddCommand(initCmd)
 }
