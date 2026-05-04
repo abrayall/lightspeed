@@ -179,6 +179,51 @@ func (p Properties) GetList(key string) []string {
 	}
 }
 
+// GetMap returns a map of string key-value pairs for a nested key
+func (p Properties) GetMap(key string) map[string]string {
+	val, ok := p[key]
+	if !ok || val == nil {
+		return nil
+	}
+
+	// YAML unmarshaling into map[string]interface{} produces nested maps
+	// of the same type (Properties alias), so check both
+	var m map[string]interface{}
+	switch v := val.(type) {
+	case map[string]interface{}:
+		m = v
+	case Properties:
+		m = map[string]interface{}(v)
+	default:
+		return nil
+	}
+
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		switch tv := v.(type) {
+		case string:
+			result[k] = tv
+		case int:
+			result[k] = fmt.Sprintf("%d", tv)
+		case float64:
+			if tv == float64(int(tv)) {
+				result[k] = fmt.Sprintf("%d", int(tv))
+			} else {
+				result[k] = fmt.Sprintf("%g", tv)
+			}
+		case bool:
+			if tv {
+				result[k] = "true"
+			} else {
+				result[k] = "false"
+			}
+		default:
+			result[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return result
+}
+
 // needsQuoting checks if a value contains YAML special characters that need quoting
 func needsQuoting(value string) bool {
 	return strings.ContainsAny(value, "*[]{}|>&!%@`#") ||

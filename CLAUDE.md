@@ -184,6 +184,15 @@ This centralizes webhook management and avoids each app needing to register inde
 
 Move hardcoded tokens (DO, Cloudflare, Operator) from `platform/operator/config/config.go` to GitHub Actions secrets and inject via `deploy.sh` at build/deploy time. Tokens should only be passed via environment variables in production.
 
+### Deploy Secrets to DO App Platform
+
+Currently `lightspeed build` bakes all environment variables (including decrypted secrets) into the Dockerfile as `ENV` lines. Secrets should instead be pushed to DO App Platform at deploy time via the operator API, using DO's `SECRET` env var type.
+
+**Changes needed:**
+- CLI (`deploy.go`): send environment variables (with secret/plain distinction) in the `createSite` API payload
+- Operator (`api/sites.go`): accept `envs` from the request and merge into the DO app spec, using `type: "SECRET"` for encrypted values and `type: "GENERAL"` for plain text
+- CLI (`build.go`): exclude secret env vars from the generated Dockerfile `ENV` lines — only include plain text config
+
 ### Image Registry Cleanup
 
 The Operator should periodically clean up old/unused images from the DO Container Registry to control storage costs:

@@ -88,6 +88,12 @@ var startCmd = &cobra.Command{
 			}
 		}
 
+		// Install Composer dependencies if configured
+		if err := ensureComposerDependencies(dir); err != nil {
+			ui.PrintError("Failed to install Composer dependencies: %v", err)
+			os.Exit(1)
+		}
+
 		ui.PrintInfo("Starting development server...")
 		fmt.Println()
 
@@ -102,8 +108,14 @@ var startCmd = &cobra.Command{
 			"--name", containerName,
 			"-p", fmt.Sprintf("%d:80", port),
 			"-v", fmt.Sprintf("%s:/var/www/html", dir),
-			serverImage,
 		}
+
+		// Add environment variables from site.properties
+		for key, value := range loadEnvironment(dir) {
+			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", key, value))
+		}
+
+		dockerArgs = append(dockerArgs, serverImage)
 
 		dockerCmd := exec.Command("docker", dockerArgs...)
 		output, err := dockerCmd.CombinedOutput()

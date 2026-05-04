@@ -43,8 +43,13 @@ echo ""
 cat > "$BUILD_DIR/Dockerfile" << EOF
 FROM php:8.2-fpm
 
-# Install nginx and APCu
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+# Install nginx and database client libraries
+RUN apt-get update && apt-get install -y nginx libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# Install PHP database extensions
+RUN docker-php-ext-install pdo pdo_mysql pdo_pgsql
+
+# Install APCu
 RUN pecl install apcu && docker-php-ext-enable apcu
 RUN echo 'apc.enable_cli=1' >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini
 
@@ -54,6 +59,7 @@ RUN echo 'server {\n\
     server_name _;\n\
     root /var/www/html;\n\
     index index.php index.html;\n\
+    absolute_redirect off;\n\
 \n\
     error_page 400 401 403 404 405 500 502 503 504 /error.php;\n\
 \n\
@@ -90,6 +96,9 @@ RUN echo 'include_path = ".:/opt"' > /usr/local/etc/php/conf.d/lightspeed.ini
 
 # Start script to run both nginx and php-fpm
 RUN echo '#!/bin/bash\n\
+if [ -f /var/www/html/vendor/autoload.php ]; then\n\
+    echo "auto_prepend_file = /var/www/html/vendor/autoload.php" > /usr/local/etc/php/conf.d/composer-autoload.ini\n\
+fi\n\
 php-fpm -D\n\
 nginx -g "daemon off;"' > /start.sh && chmod +x /start.sh
 
@@ -115,6 +124,14 @@ echo -e "${BLUE}Building lightspeed-server:${VERSION}...${NC}"
 docker build -t lightspeed-server:${VERSION} .
 docker tag lightspeed-server:${VERSION} lightspeed-server:latest
 
+# Also tag with full GHCR name for local use
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if [[ "$REMOTE_URL" =~ github\.com[:/]([^/]+)/ ]]; then
+    FULL_IMAGE_NAME="ghcr.io/${BASH_REMATCH[1]}/lightspeed-server"
+    docker tag lightspeed-server:${VERSION} ${FULL_IMAGE_NAME}:${VERSION}
+    docker tag lightspeed-server:${VERSION} ${FULL_IMAGE_NAME}:latest
+fi
+
 echo ""
 echo "=============================================="
 echo -e "${GREEN}Build Complete!${NC}"
@@ -123,4 +140,8 @@ echo ""
 echo -e "Images created:"
 echo -e "  ${GREEN}✓${NC} lightspeed-server:${VERSION}"
 echo -e "  ${GREEN}✓${NC} lightspeed-server:latest"
+if [ -n "$FULL_IMAGE_NAME" ]; then
+echo -e "  ${GREEN}✓${NC} ${FULL_IMAGE_NAME}:${VERSION}"
+echo -e "  ${GREEN}✓${NC} ${FULL_IMAGE_NAME}:latest"
+fi
 echo ""

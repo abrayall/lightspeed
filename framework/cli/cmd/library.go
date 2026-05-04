@@ -198,6 +198,11 @@ func ensureLibraryVersion(version string) error {
 
 // resolveLibraryPath resolves a library specification to an absolute path
 func resolveLibraryPath(spec string) (string, error) {
+	// Composer specs are handled separately
+	if isComposerSpec(spec) {
+		return "", nil
+	}
+
 	if spec == "lightspeed" {
 		if err := ensureLibrary(); err != nil {
 			return "", err
@@ -239,7 +244,7 @@ func loadLibraries(dir string) ([]string, error) {
 
 	for _, spec := range specs {
 		spec = strings.TrimSpace(spec)
-		if spec == "" {
+		if spec == "" || isComposerSpec(spec) {
 			continue
 		}
 

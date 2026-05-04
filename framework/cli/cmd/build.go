@@ -90,7 +90,7 @@ var buildCmd = &cobra.Command{
 		createdDockerfile := false
 		if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 			ui.PrintInfo("Creating Dockerfile...")
-			if err := createDockerfile(dockerfilePath, siteImage, tag); err != nil {
+			if err := createDockerfile(dockerfilePath, siteImage, tag, dir); err != nil {
 				ui.PrintError("Failed to create Dockerfile: %v", err)
 				os.Exit(1)
 			}
@@ -135,7 +135,7 @@ var buildCmd = &cobra.Command{
 	},
 }
 
-func createDockerfile(path string, siteImage string, version string) error {
+func createDockerfile(path string, siteImage string, version string, dir string) error {
 	baseImage := getBaseImage(siteImage)
 	content := fmt.Sprintf(`FROM %s
 
@@ -144,22 +144,44 @@ COPY . /var/www/html/
 
 # Inject site version
 RUN echo 'version=%s' > /var/www/html/version.properties
+`, baseImage, version)
 
+	// Add composer support if packages are configured
+	if hasComposerPackages(dir) {
+		content += `
+# Install Composer dependencies
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN cd /var/www/html && composer install --no-dev --optimize-autoloader --no-interaction
+RUN echo 'auto_prepend_file = /var/www/html/vendor/autoload.php' >> /usr/local/etc/php/conf.d/lightspeed.ini
+`
+	}
+
+	// Add environment variables
+	envVars := loadEnvironment(dir)
+	if len(envVars) > 0 {
+		content += "\n# Environment variables\n"
+		for key, value := range envVars {
+			content += fmt.Sprintf("ENV %s=%q\n", key, value)
+		}
+	}
+
+	content += `
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html
 
 # Expose port 80
 EXPOSE 80
-`, baseImage, version)
+`
 
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
 // SiteInfo holds information about a site from site.properties
 type SiteInfo struct {
-	Name    string
-	Domains []string
-	Image   string
+	Name        string
+	Domains     []string
+	Image       string
+	Environment map[string]string
 }
 
 // resolveImage normalizes an image specification
@@ -216,7 +238,25 @@ func loadSiteInfo(dir string) (*SiteInfo, error) {
 	// Get base image
 	info.Image = props.Get("image")
 
+	// Get environment variables
+	info.Environment = props.GetMap("environment")
+
 	return info, nil
+}
+
+// loadEnvironment loads environment variables from site.properties, decrypting secrets
+func loadEnvironment(dir string) map[string]string {
+	siteInfo, err := loadSiteInfo(dir)
+	if err != nil || siteInfo == nil || len(siteInfo.Environment) == 0 {
+		return nil
+	}
+
+	salt := loadEncryptionSalt()
+	resolved := make(map[string]string, len(siteInfo.Environment))
+	for key, value := range siteInfo.Environment {
+		resolved[key] = resolveEnvironmentValue(value, salt)
+	}
+	return resolved
 }
 
 // printSiteInfo prints site information
