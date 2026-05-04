@@ -131,6 +131,16 @@ Options:
 If the app doesn't exist, it will be created automatically. Your site will be accessible at:
 - `https://[name].lightspeed.ee` (automatically configured)
 
+### encrypt
+
+Encrypt a value for use in `site.properties` environment variables.
+
+```bash
+lightspeed encrypt "my-secret-value"
+```
+
+Uses AES-256-GCM encryption. The encryption key is resolved from `LIGHTSPEED_KEY` env var, `~/.lightspeed/key` file, or derived from site properties. Run from your project directory to use the correct key.
+
 ## Configuration
 
 ### site.properties
@@ -148,8 +158,13 @@ domains=www.example.com,app.example.com
 # Base image (pin to specific version)
 image=0.5.4
 
-# PHP libraries (for include path)
-libraries=lightspeed
+# PHP libraries and Composer packages
+libraries=lightspeed,composer:stripe/stripe-php:^16.0,composer:monolog/monolog:^3.0
+
+# Environment variables
+environment:
+  API_URL: https://api.example.com
+  DB_PASSWORD: <encrypted value from lightspeed encrypt>
 ```
 
 #### Properties
@@ -160,7 +175,8 @@ libraries=lightspeed
 | `domain` | Single custom domain | - |
 | `domains` | Comma-separated list of custom domains | - |
 | `image` | Base Docker image version | CLI version |
-| `libraries` | Comma-separated PHP library paths | - |
+| `libraries` | Comma-separated PHP library paths and Composer packages | - |
+| `environment` | Map of environment variables (supports encrypted values) | - |
 
 #### Image Property
 
@@ -191,6 +207,65 @@ libraries=lightspeed:v0.5.0
 # Multiple libraries
 libraries=lightspeed,/path/to/custom/lib
 ```
+
+#### Composer Packages
+
+Composer PHP packages can be added via the `libraries` property with the `composer:` prefix:
+
+```properties
+# Composer tool + packages
+libraries=lightspeed,composer:stripe/stripe-php:^16.0,composer:monolog/monolog:^3.0
+
+# Pin a specific Composer version
+libraries=lightspeed,composer:2.8,composer:stripe/stripe-php:^16.0
+
+# Just the Composer tool (latest)
+libraries=lightspeed,composer
+```
+
+Syntax:
+- `composer` or `composer:<version>` — install the Composer tool (no `/` = tool version)
+- `composer:<vendor>/<package>:<version>` — install a package (has `/` = package spec)
+- Version defaults to `*` if omitted
+
+When Composer packages are configured:
+- `composer.json` is auto-generated from `site.properties` (gitignored)
+- `vendor/` is auto-installed on `lightspeed start` (gitignored)
+- `vendor/autoload.php` is automatically loaded via `auto_prepend_file`
+- Production builds run `composer install --no-dev --optimize-autoloader` in the Docker image
+
+#### Environment Variables
+
+Environment variables can be defined in the `environment:` section of `site.properties`:
+
+```properties
+environment:
+  API_URL: https://api.example.com
+  DB_HOST: mydb.example.com
+  DB_PASSWORD: <encrypted value>
+```
+
+- **Local dev** (`lightspeed start`): injected as `-e` flags into the Docker container
+- **Production** (`lightspeed build`): baked as `ENV` lines in the Dockerfile
+- Values can be plain text or encrypted (see Encryption below)
+
+#### Encryption
+
+Sensitive values can be encrypted using `lightspeed encrypt`:
+
+```bash
+lightspeed encrypt "my-secret-password"
+```
+
+The encrypted output can be used directly as an environment variable value in `site.properties`. At runtime, encrypted values are automatically decrypted — no special syntax required in the properties file.
+
+Encryption uses AES-256-GCM with a key derived from (in order of precedence):
+1. `LIGHTSPEED_KEY` environment variable
+2. `~/.lightspeed/key` file
+3. `key` property in `site.properties`
+4. `domain` or `name` property in `site.properties`
+
+Run `lightspeed encrypt` from your project directory to use the correct key.
 
 ## PHP Library
 
@@ -245,13 +320,15 @@ lightspeed deploy     # Deploy to App Platform
 
 ```
 mysite/
-├── site.properties     # Site configuration
+├── site.properties     # Site configuration (source of truth)
 ├── index.php           # Main entry point
 ├── assets/
 │   ├── css/
 │   │   └── style.css   # Stylesheets
 │   └── js/             # JavaScript files
 ├── includes/           # PHP includes
+├── composer.json        # Generated from site.properties (gitignored)
+├── vendor/              # Composer dependencies (gitignored)
 ├── .idea/              # PhpStorm configuration
 │   └── php.xml         # PHP include paths
 ├── .gitignore          # Git ignore file
@@ -263,10 +340,13 @@ mysite/
 Lightspeed uses a custom server image (`ghcr.io/abrayall/lightspeed-server`) based on:
 - PHP 8.2 FPM
 - Nginx
+- MySQL and PostgreSQL PDO drivers
 
 **Features:**
 - Clean URLs (no `.php` extension required)
 - Pre-configured PHP include path for Lightspeed library
+- Automatic Composer autoloading when `vendor/autoload.php` is present
+- Environment variable injection
 - Optimized for small PHP sites
 
 ## Requirements

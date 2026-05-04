@@ -178,13 +178,18 @@ Available features:
 - `+"`claude`"+` — Claude Code support files
 
 ### lightspeed encrypt [value]
-Encrypt a value for use in site.properties. Uses AES-256-GCM.
+Encrypt a value for use in site.properties environment variables. Uses AES-256-GCM.
+
+The encrypted output can be used directly as an environment variable value in site.properties — no special prefix or syntax needed. At runtime, encrypted values are automatically detected and decrypted.
 
 Key resolution order:
 1. `+"`LIGHTSPEED_KEY`"+` environment variable
 2. `+"`~/.lightspeed/key`"+` file
 3. `+"`key`"+` property in site.properties
-4. Derived from domain/name
+4. `+"`domain`"+` or `+"`name`"+` property in site.properties
+5. Derived from directory name
+
+Must be run from the project directory to use the correct key.
 
 ## PHP Library
 
@@ -302,6 +307,42 @@ $decrypted = crypto()->decrypt($encrypted);
 $password = site()->getEncrypted('smtp.password');
 `+"```"+`
 
+## Environment Variables
+
+Environment variables are defined in the `+"`environment:`"+` section of site.properties:
+
+`+"```properties"+`
+environment:
+  API_URL: https://api.example.com
+  DB_HOST: mydb.example.com
+  DB_PASSWORD: <encrypted value from lightspeed encrypt>
+`+"```"+`
+
+- **Local dev** (`+"`lightspeed start`"+`): injected as `+"`-e`"+` flags into the Docker container
+- **Production** (`+"`lightspeed build`"+`): baked as `+"`ENV`"+` lines in the Dockerfile
+- Values can be plain text or encrypted — encrypted values are automatically decrypted at build/start time
+- To encrypt a value: `+"`lightspeed encrypt \"my-secret\"`"+`
+
+## Composer Packages
+
+Composer PHP packages are configured via the `+"`libraries`"+` property with the `+"`composer:`"+` prefix:
+
+`+"```properties"+`
+libraries=lightspeed,composer:stripe/stripe-php:^16.0,composer:monolog/monolog:^3.0
+`+"```"+`
+
+Syntax:
+- `+"`composer`"+` or `+"`composer:<version>`"+` — the Composer tool itself (no `+"`/`"+` = tool version)
+- `+"`composer:<vendor>/<package>:<version>`"+` — a package (has `+"`/`"+` = package spec)
+- Version defaults to `+"`*`"+` if omitted
+
+How it works:
+- `+"`composer.json`"+` is auto-generated from site.properties (gitignored)
+- `+"`vendor/`"+` is auto-installed on `+"`lightspeed start`"+` (gitignored)
+- `+"`vendor/autoload.php`"+` is automatically loaded via `+"`auto_prepend_file`"+`
+- Production builds run `+"`composer install --no-dev --optimize-autoloader`"+` in the Docker image
+- Composer phar is cached at `+"`~/.lightspeed/composer/v<version>/composer.phar`"+`
+
 ## site.properties Reference
 
 `+"```properties"+`
@@ -310,11 +351,16 @@ name=my-site
 domain=example.com
 domains=example.com,www.example.com
 
-# Libraries
-libraries=lightspeed
+# Libraries and Composer packages
+libraries=lightspeed,composer:stripe/stripe-php:^16.0
 
 # Base image (optional)
 image=0.5.3
+
+# Environment variables (plain text or encrypted)
+environment:
+  API_URL: https://api.example.com
+  DB_PASSWORD: <encrypted value>
 
 # Encryption key (optional, otherwise derived from domain/name)
 key=my-secret-key
