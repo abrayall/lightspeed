@@ -44,6 +44,19 @@ class Mail {
         if ($fromEmail !== '') {
             $this->mailer->setFrom($fromEmail, $fromName);
         }
+
+        $hostname = $this->site->get('smtp.hostname', '');
+        if ($hostname === '' && $fromEmail !== '') {
+            $hostname = substr($fromEmail, strpos($fromEmail, '@') + 1);
+        }
+        if ($hostname !== '') {
+            $this->mailer->Hostname = $hostname;
+        }
+    }
+
+    public function hostname(string $hostname): self {
+        $this->mailer->Hostname = $hostname;
+        return $this;
     }
 
     public function to(string $email, string $name = ''): self {
